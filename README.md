@@ -26,6 +26,8 @@ python3 scripts/dev_server.py --port 8000
 
 その後、`http://127.0.0.1:8000` を開いてください。
 `stories/*.md` または `scripts/build_site.py` を保存すると自動で再ビルドされ、ブラウザもリロードされます。
+Linux ではファイルシステムイベントで監視し、対応していない環境では polling にフォールバックします。
+強制的に polling を使う場合は `--watch-mode poll` を付けてください。
 
 ## GitHub Pages
 
