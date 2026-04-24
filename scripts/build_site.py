@@ -10,8 +10,11 @@ import re
 
 ROOT = Path(__file__).resolve().parent.parent
 STORIES_DIR = ROOT / "stories"
+ARCHIVE_DIR = ROOT / "archive" / "initial"
 SITE_DIR = ROOT / "site"
 SITE_STORIES_DIR = SITE_DIR / "stories"
+SITE_ARCHIVE_DIR = SITE_DIR / "archive"
+SITE_ARCHIVE_STORIES_DIR = SITE_ARCHIVE_DIR / "stories"
 SITE_ASSETS_DIR = SITE_DIR / "assets"
 
 SITE_TITLE = "Mini Novels"
@@ -142,6 +145,22 @@ button:focus-visible {
   font-size: 0.78rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.site-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.site-nav a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .home-layout {
@@ -318,6 +337,70 @@ button:focus-visible {
 
 .catalog {
   padding-top: clamp(36px, 6vw, 72px);
+}
+
+.edition-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 24px;
+  align-items: end;
+  margin-top: 26px;
+  padding: 22px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.edition-note p {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+}
+
+.edition-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 13px;
+  border: 1px solid var(--rule-strong);
+  color: var(--accent-deep);
+  font-family:
+    "Avenir Next",
+    "Noto Sans JP",
+    "Hiragino Sans",
+    "Yu Gothic",
+    sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.edition-link:hover {
+  border-color: var(--accent);
+}
+
+.archive-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(280px, 0.72fr);
+  gap: clamp(28px, 6vw, 76px);
+  align-items: end;
+  padding: clamp(42px, 8vw, 92px) 0 clamp(34px, 6vw, 66px);
+  border-bottom: 1px solid var(--rule);
+}
+
+.archive-title {
+  max-width: 11em;
+  margin: 18px 0 0;
+  font-size: clamp(3.4rem, 9vw, 7rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+
+.archive-copy {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: clamp(1.02rem, 0.45vw + 1rem, 1.22rem);
 }
 
 .section-heading {
@@ -509,6 +592,8 @@ button:focus-visible {
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.08;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .story-intro {
@@ -590,7 +675,7 @@ button:focus-visible {
 
 .footer-nav {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   margin-top: clamp(38px, 6vw, 70px);
   padding-top: 18px;
@@ -671,6 +756,13 @@ button:focus-visible {
     font-size: 0.72rem;
   }
 
+  .site-nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.72rem;
+  }
+
   .home-layout {
     padding-top: 36px;
   }
@@ -700,6 +792,11 @@ button:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .edition-note,
+  .archive-hero {
+    grid-template-columns: 1fr;
+  }
+
   .story-row {
     grid-template-columns: 52px minmax(0, 1fr);
     gap: 14px;
@@ -718,7 +815,7 @@ button:focus-visible {
   }
 
   .story-title {
-    font-size: clamp(2.1rem, 13vw, 3.5rem);
+    font-size: clamp(2rem, 10vw, 2.4rem);
   }
 
   .story-body {
@@ -905,15 +1002,11 @@ def parse_markdown(text: str, fallback_title: str) -> tuple[str, list[Section], 
     return title, sections, html_body, plain_text
 
 
-def render_index_page(stories: list[Story]) -> str:
-    if stories:
-        latest_story = stories[-1]
-        total_characters = sum(story.character_count for story in stories)
-        total_minutes = sum(story.reading_minutes for story in stories)
-        rows = "\n".join(
-            f"""
+def render_story_rows(stories: list[Story], base_href: str) -> str:
+    return "\n".join(
+        f"""
             <li>
-              <a class="story-row" href="stories/{story.slug}.html">
+              <a class="story-row" href="{base_href}/{story.slug}.html">
                 <span class="row-number">{escape(story.sequence_label)}</span>
                 <span class="row-main">
                   <span class="row-title">{escape(story.title)}</span>
@@ -923,8 +1016,24 @@ def render_index_page(stories: list[Story]) -> str:
               </a>
             </li>
             """.strip()
-            for story in reversed(stories)
-        )
+        for story in reversed(stories)
+    )
+
+
+def render_index_page(stories: list[Story], archived_stories: list[Story]) -> str:
+    if stories:
+        latest_story = stories[-1]
+        total_characters = sum(story.character_count for story in stories)
+        total_minutes = sum(story.reading_minutes for story in stories)
+        rows = render_story_rows(stories, "stories")
+        archive_note = ""
+        if archived_stories:
+            archive_note = f"""
+          <div class="edition-note">
+            <p>初期版の作品は、現行版とは別の読書室として保存しています。改稿が済んだ作品から、現行目次へ戻していきます。</p>
+            <a class="edition-link" href="archive/index.html">初期版アーカイブ</a>
+          </div>
+            """.strip()
         body = f"""
         <section class="home-layout" aria-labelledby="home-title">
           <div class="home-intro">
@@ -963,10 +1072,11 @@ def render_index_page(stories: list[Story]) -> str:
             </span>
           </a>
         </section>
+        {archive_note}
         <section class="catalog" aria-labelledby="catalog-title">
           <div class="section-heading">
             <div>
-              <p class="kicker">Archive</p>
+              <p class="kicker">Current Edition</p>
               <h2 id="catalog-title">作品目次</h2>
             </div>
             <div class="site-stat">{len(stories)} stories</div>
@@ -983,10 +1093,58 @@ def render_index_page(stories: list[Story]) -> str:
         page_title="Home",
         stylesheet_path="assets/style.css",
         main_content=body,
+        home_href="index.html",
+        archive_href="archive/index.html" if archived_stories else None,
     )
 
 
-def render_story_page(stories: list[Story], index: int) -> str:
+def render_archive_index_page(stories: list[Story]) -> str:
+    total_characters = sum(story.character_count for story in stories)
+    total_minutes = sum(story.reading_minutes for story in stories)
+    rows = render_story_rows(stories, "stories")
+
+    return render_page(
+        page_title="初期版アーカイブ",
+        stylesheet_path="../assets/style.css",
+        main_content=f"""
+        <section class="archive-hero" aria-labelledby="archive-title">
+          <div>
+            <p class="kicker">Initial Edition</p>
+            <h1 class="archive-title" id="archive-title">初期版<br>アーカイブ</h1>
+          </div>
+          <p class="archive-copy">改稿前の作品を、現行版とは別の読書室として保存しています。作品の変化を追うための静かな保管棚です。</p>
+        </section>
+        <section class="catalog" aria-labelledby="archive-catalog-title">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Archive</p>
+              <h2 id="archive-catalog-title">初期版目次</h2>
+            </div>
+            <div class="site-stat">{len(stories)} stories / 約{total_minutes}分 / {total_characters}字</div>
+          </div>
+          <ol class="story-list">
+            {rows}
+          </ol>
+        </section>
+        """.strip(),
+        home_href="../index.html",
+        archive_href="index.html",
+    )
+
+
+def render_story_page(
+    stories: list[Story],
+    index: int,
+    *,
+    stylesheet_path: str,
+    home_href: str,
+    archive_href: str | None,
+    story_kind: str,
+    back_label: str,
+    back_href: str | None = None,
+    cross_edition_story: Story | None = None,
+    cross_edition_href: str | None = None,
+) -> str:
     story = stories[index]
     previous_story = stories[index - 1] if index > 0 else None
     next_story = stories[index + 1] if index < len(stories) - 1 else None
@@ -1008,7 +1166,11 @@ def render_story_page(stories: list[Story], index: int) -> str:
         toc_html = ""
     toc_block = f"\n            {toc_html}" if toc_html else ""
 
-    footer_links = ['<a class="nav-link" href="../index.html">目次へ戻る</a>']
+    footer_links = [f'<a class="nav-link" href="{back_href or home_href}">{escape(back_label)}</a>']
+    if cross_edition_story and cross_edition_href:
+        footer_links.append(
+            f'<a class="nav-link" href="{cross_edition_href}">別版: {escape(cross_edition_story.title)}</a>'
+        )
     if previous_story:
         footer_links.append(
             f'<a class="nav-link" href="{previous_story.slug}.html">前の話: {escape(previous_story.title)}</a>'
@@ -1020,12 +1182,12 @@ def render_story_page(stories: list[Story], index: int) -> str:
 
     return render_page(
         page_title=story.title,
-        stylesheet_path="../assets/style.css",
+        stylesheet_path=stylesheet_path,
         main_content=f"""
         <article class="reader-shell">
           <aside class="reader-rail" aria-label="Story navigation">
             <div class="rail-block">
-              <p class="story-label">Story</p>
+              <p class="story-label">{escape(story_kind)}</p>
               <p>{escape(story.sequence_label)}</p>
             </div>
             <div class="rail-block">
@@ -1048,10 +1210,23 @@ def render_story_page(stories: list[Story], index: int) -> str:
           </div>
         </article>
         """.strip(),
+        home_href=home_href,
+        archive_href=archive_href,
     )
 
 
-def render_page(page_title: str, stylesheet_path: str, main_content: str) -> str:
+def render_page(
+    page_title: str,
+    stylesheet_path: str,
+    main_content: str,
+    *,
+    home_href: str,
+    archive_href: str | None,
+) -> str:
+    archive_link = ""
+    if archive_href:
+        archive_link = f'<a href="{escape(archive_href)}">Archive</a>'
+
     return f"""<!DOCTYPE html>
 <html lang="ja">
   <head>
@@ -1065,8 +1240,11 @@ def render_page(page_title: str, stylesheet_path: str, main_content: str) -> str
     <a class="skip-link" href="#main">本文へ</a>
     <div class="site-shell">
       <header class="site-header">
-        <a class="brand" href="{('index.html' if stylesheet_path == 'assets/style.css' else '../index.html')}">{escape(SITE_TITLE)}</a>
-        <span class="site-mark">Short Fiction</span>
+        <a class="brand" href="{escape(home_href)}">{escape(SITE_TITLE)}</a>
+        <nav class="site-nav" aria-label="Site navigation">
+          <a href="{escape(home_href)}">Current</a>
+          {archive_link}
+        </nav>
       </header>
       <main id="main">
         {main_content}
@@ -1104,11 +1282,15 @@ def load_story(path: Path) -> Story:
 def ensure_output_dirs() -> None:
     SITE_DIR.mkdir(exist_ok=True)
     SITE_STORIES_DIR.mkdir(exist_ok=True)
+    SITE_ARCHIVE_DIR.mkdir(exist_ok=True)
+    SITE_ARCHIVE_STORIES_DIR.mkdir(exist_ok=True)
     SITE_ASSETS_DIR.mkdir(exist_ok=True)
 
 
 def clear_generated_story_pages() -> None:
     for path in SITE_STORIES_DIR.glob("*.html"):
+        path.unlink()
+    for path in SITE_ARCHIVE_STORIES_DIR.glob("*.html"):
         path.unlink()
 
 
@@ -1118,16 +1300,64 @@ def build_site() -> None:
 
     story_paths = sorted(STORIES_DIR.glob("*.md"))
     stories = [load_story(path) for path in story_paths]
+    archive_story_paths = sorted(ARCHIVE_DIR.glob("*.md"))
+    archived_stories = [load_story(path) for path in archive_story_paths]
+    archived_by_slug = {story.slug: story for story in archived_stories}
+    current_by_slug = {story.slug: story for story in stories}
 
     (SITE_DIR / ".nojekyll").write_text("", encoding="utf-8")
     (SITE_ASSETS_DIR / "style.css").write_text(STYLE_CSS, encoding="utf-8")
-    (SITE_DIR / "index.html").write_text(render_index_page(stories), encoding="utf-8")
+    (SITE_DIR / "index.html").write_text(
+        render_index_page(stories, archived_stories),
+        encoding="utf-8",
+    )
+
+    if archived_stories:
+        (SITE_ARCHIVE_DIR / "index.html").write_text(
+            render_archive_index_page(archived_stories),
+            encoding="utf-8",
+        )
 
     for index, story in enumerate(stories):
         output_path = SITE_STORIES_DIR / f"{story.slug}.html"
-        output_path.write_text(render_story_page(stories, index), encoding="utf-8")
+        archived_story = archived_by_slug.get(story.slug)
+        output_path.write_text(
+            render_story_page(
+                stories,
+                index,
+                stylesheet_path="../assets/style.css",
+                home_href="../index.html",
+                archive_href="../archive/index.html" if archived_stories else None,
+                story_kind="Current",
+                back_label="現行目次へ",
+                cross_edition_story=archived_story,
+                cross_edition_href=f"../archive/stories/{story.slug}.html" if archived_story else None,
+            ),
+            encoding="utf-8",
+        )
 
-    print(f"Built {len(stories)} stories into {SITE_DIR}")
+    for index, story in enumerate(archived_stories):
+        output_path = SITE_ARCHIVE_STORIES_DIR / f"{story.slug}.html"
+        current_story = current_by_slug.get(story.slug)
+        output_path.write_text(
+            render_story_page(
+                archived_stories,
+                index,
+                stylesheet_path="../../assets/style.css",
+                home_href="../../index.html",
+                archive_href="../index.html",
+                story_kind="Initial",
+                back_label="初期版目次へ",
+                back_href="../index.html",
+                cross_edition_story=current_story,
+                cross_edition_href=f"../../stories/{story.slug}.html" if current_story else None,
+            ),
+            encoding="utf-8",
+        )
+
+    print(
+        f"Built {len(stories)} current stories and {len(archived_stories)} archived stories into {SITE_DIR}"
+    )
 
 
 if __name__ == "__main__":

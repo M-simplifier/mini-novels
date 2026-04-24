@@ -22,6 +22,7 @@ import urllib.parse
 ROOT = Path(__file__).resolve().parent.parent
 SITE_DIR = ROOT / "site"
 STORIES_DIR = ROOT / "stories"
+ARCHIVE_DIR = ROOT / "archive" / "initial"
 BUILD_SCRIPT = Path(__file__).resolve().parent / "build_site.py"
 RELOAD_ENDPOINT = "/__reload__"
 RELOAD_EVENT_ENDPOINT = "/__events__"
@@ -303,6 +304,8 @@ def rebuild_after_change(reload_state: ReloadState) -> None:
 
 def collect_watch_snapshot() -> dict[str, int]:
     watched_paths = {BUILD_SCRIPT, *STORIES_DIR.glob("*.md")}
+    if ARCHIVE_DIR.exists():
+        watched_paths.update(ARCHIVE_DIR.glob("*.md"))
     snapshot: dict[str, int] = {}
     for path in watched_paths:
         if path.exists():
@@ -337,6 +340,8 @@ class InotifySourceWatcher:
 
         self.watches: dict[int, Path] = {}
         self.add_watch(STORIES_DIR)
+        if ARCHIVE_DIR.exists():
+            self.add_watch(ARCHIVE_DIR)
         self.add_watch(BUILD_SCRIPT.parent)
 
     def add_watch(self, path: Path) -> None:
@@ -388,7 +393,7 @@ class InotifySourceWatcher:
                 continue
 
             name = os.fsdecode(raw_name) if raw_name else ""
-            if path == STORIES_DIR and (not name or name.endswith(".md")):
+            if path in (STORIES_DIR, ARCHIVE_DIR) and (not name or name.endswith(".md")):
                 changed = True
             elif path == BUILD_SCRIPT.parent and name == BUILD_SCRIPT.name:
                 changed = True
