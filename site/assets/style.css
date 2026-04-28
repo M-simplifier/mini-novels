@@ -289,6 +289,21 @@ button:focus-visible {
   font-size: 1.03rem;
 }
 
+.series-parts {
+  display: block;
+  margin-top: 9px;
+  color: var(--teal);
+  font-family:
+    "Avenir Next",
+    "Noto Sans JP",
+    "Hiragino Sans",
+    "Yu Gothic",
+    sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 .meta-row {
   display: flex;
   flex-wrap: wrap;

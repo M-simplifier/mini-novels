@@ -23,6 +23,7 @@ SITE_SUBTITLE = "短編小説のための小さな読書室。"
 INLINE_CODE_PATTERN = re.compile(r"(`[^`]+`)")
 ORDERED_LIST_PATTERN = re.compile(r"^\d+\.\s+")
 FRONT_MATTER_PATTERN = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?(.*)$", re.DOTALL)
+SERIAL_TITLE_PATTERN = re.compile(r"^(.+?)（(前編|中編|後編)）$")
 
 STYLE_CSS = """\
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Noto+Serif+JP:wght@400;600;700;900&display=swap");
@@ -314,6 +315,21 @@ button:focus-visible {
   margin: 22px 0 0;
   color: var(--ink-soft);
   font-size: 1.03rem;
+}
+
+.series-parts {
+  display: block;
+  margin-top: 9px;
+  color: var(--teal);
+  font-family:
+    "Avenir Next",
+    "Noto Sans JP",
+    "Hiragino Sans",
+    "Yu Gothic",
+    sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .meta-row {
@@ -850,6 +866,17 @@ class Story:
     reading_minutes: int
 
 
+@dataclass
+class IndexEntry:
+    slug: str
+    title: str
+    excerpt: str
+    sequence_label: str
+    character_count: int
+    reading_minutes: int
+    part_count: int = 1
+
+
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     match = FRONT_MATTER_PATTERN.match(text)
     if not match:
@@ -897,6 +924,67 @@ def estimate_reading_minutes(character_count: int) -> int:
 def make_sequence_label(slug: str) -> str:
     match = re.match(r"^(\d+)", slug)
     return match.group(1) if match else slug
+
+
+def story_to_index_entry(story: Story) -> IndexEntry:
+    return IndexEntry(
+        slug=story.slug,
+        title=story.title,
+        excerpt=story.excerpt,
+        sequence_label=story.sequence_label,
+        character_count=story.character_count,
+        reading_minutes=story.reading_minutes,
+    )
+
+
+def make_index_entries(stories: list[Story]) -> list[IndexEntry]:
+    entries: list[IndexEntry] = []
+    index = 0
+    part_order = {"前編": 0, "中編": 1, "後編": 2}
+
+    while index < len(stories):
+        story = stories[index]
+        title_match = SERIAL_TITLE_PATTERN.match(story.title)
+        if not title_match:
+            entries.append(story_to_index_entry(story))
+            index += 1
+            continue
+
+        series_title, part_label = title_match.groups()
+        group = [story]
+        next_index = index + 1
+        expected_order = part_order[part_label] + 1
+        while next_index < len(stories):
+            next_match = SERIAL_TITLE_PATTERN.match(stories[next_index].title)
+            if not next_match:
+                break
+            next_title, next_part_label = next_match.groups()
+            if next_title != series_title or part_order[next_part_label] != expected_order:
+                break
+            group.append(stories[next_index])
+            next_index += 1
+            expected_order += 1
+
+        if len(group) == 1:
+            entries.append(story_to_index_entry(story))
+            index += 1
+            continue
+
+        excerpt = re.sub(r"^[一二三四五六七八九十]+\s+", "", group[0].excerpt)
+        entries.append(
+            IndexEntry(
+                slug=group[0].slug,
+                title=series_title,
+                excerpt=excerpt,
+                sequence_label=f"{group[0].sequence_label}-{group[-1].sequence_label}",
+                character_count=sum(part.character_count for part in group),
+                reading_minutes=sum(part.reading_minutes for part in group),
+                part_count=len(group),
+            )
+        )
+        index = next_index
+
+    return entries
 
 
 def parse_markdown(text: str, fallback_title: str) -> tuple[str, list[Section], str, str]:
@@ -1002,30 +1090,47 @@ def parse_markdown(text: str, fallback_title: str) -> tuple[str, list[Section], 
     return title, sections, html_body, plain_text
 
 
-def render_story_rows(stories: list[Story], base_href: str) -> str:
-    return "\n".join(
-        f"""
+def render_index_entry_row(entry: IndexEntry, base_href: str) -> str:
+    series_note = ""
+    meta_prefix = ""
+    if entry.part_count > 1:
+        series_note = (
+            f'\n                  <span class="series-parts">全{entry.part_count}編・前編から読む</span>'
+        )
+        meta_prefix = f"全{entry.part_count}編 / "
+
+    return f"""
             <li>
-              <a class="story-row" href="{base_href}/{story.slug}.html">
-                <span class="row-number">{escape(story.sequence_label)}</span>
+              <a class="story-row" href="{base_href}/{entry.slug}.html">
+                <span class="row-number">{escape(entry.sequence_label)}</span>
                 <span class="row-main">
-                  <span class="row-title">{escape(story.title)}</span>
-                  <span class="row-excerpt">{escape(story.excerpt)}</span>
+                  <span class="row-title">{escape(entry.title)}</span>{series_note}
+                  <span class="row-excerpt">{escape(entry.excerpt)}</span>
                 </span>
-                <span class="row-meta">{story.character_count}字 / 約{story.reading_minutes}分</span>
+                <span class="row-meta">{meta_prefix}{entry.character_count}字 / 約{entry.reading_minutes}分</span>
               </a>
             </li>
             """.strip()
-        for story in reversed(stories)
+
+
+def render_story_rows(stories: list[Story], base_href: str, *, group_serials: bool = False) -> str:
+    entries = make_index_entries(stories) if group_serials else [
+        story_to_index_entry(story) for story in stories
+    ]
+
+    return "\n".join(
+        render_index_entry_row(entry, base_href)
+        for entry in reversed(entries)
     )
 
 
 def render_index_page(stories: list[Story], archived_stories: list[Story]) -> str:
     if stories:
-        latest_story = stories[-1]
+        index_entries = make_index_entries(stories)
+        latest_entry = index_entries[-1]
         total_characters = sum(story.character_count for story in stories)
         total_minutes = sum(story.reading_minutes for story in stories)
-        rows = render_story_rows(stories, "stories")
+        rows = render_story_rows(stories, "stories", group_serials=True)
         archive_note = ""
         if archived_stories:
             archive_note = f"""
@@ -1044,8 +1149,8 @@ def render_index_page(stories: list[Story], archived_stories: list[Story]) -> st
             </div>
             <dl class="collection-meta">
               <div>
-                <dt>Stories</dt>
-                <dd>{len(stories)}</dd>
+                <dt>Works</dt>
+                <dd>{len(index_entries)}</dd>
               </div>
               <div>
                 <dt>Reading</dt>
@@ -1057,18 +1162,20 @@ def render_index_page(stories: list[Story], archived_stories: list[Story]) -> st
               </div>
             </dl>
           </div>
-          <a class="latest-panel" href="stories/{latest_story.slug}.html">
+          <a class="latest-panel" href="stories/{latest_entry.slug}.html">
             <span class="latest-top">
               <span class="kicker">Latest</span>
-              <span class="story-number">{escape(latest_story.sequence_label)}</span>
+              <span class="story-number">{escape(latest_entry.sequence_label)}</span>
             </span>
             <span>
-              <span class="latest-title">{escape(latest_story.title)}</span>
-              <span class="latest-excerpt">{escape(latest_story.excerpt)}</span>
+              <span class="latest-title">{escape(latest_entry.title)}</span>
+              {f'<span class="series-parts">全{latest_entry.part_count}編・前編から読む</span>' if latest_entry.part_count > 1 else ''}
+              <span class="latest-excerpt">{escape(latest_entry.excerpt)}</span>
             </span>
             <span class="meta-row">
-              <span class="meta-chip">{latest_story.character_count}字</span>
-              <span class="meta-chip">約{latest_story.reading_minutes}分</span>
+              {f'<span class="meta-chip">全{latest_entry.part_count}編</span>' if latest_entry.part_count > 1 else ''}
+              <span class="meta-chip">{latest_entry.character_count}字</span>
+              <span class="meta-chip">約{latest_entry.reading_minutes}分</span>
             </span>
           </a>
         </section>
@@ -1079,7 +1186,7 @@ def render_index_page(stories: list[Story], archived_stories: list[Story]) -> st
               <p class="kicker">Current Edition</p>
               <h2 id="catalog-title">作品目次</h2>
             </div>
-            <div class="site-stat">{len(stories)} stories</div>
+            <div class="site-stat">{len(index_entries)} works</div>
           </div>
           <ol class="story-list">
             {rows}
