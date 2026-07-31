@@ -864,6 +864,8 @@ class Story:
     sections: list[Section]
     character_count: int
     reading_minutes: int
+    series: str = ""
+    episode: int | None = None
 
 
 @dataclass
@@ -875,6 +877,9 @@ class IndexEntry:
     character_count: int
     reading_minutes: int
     part_count: int = 1
+    latest_slug: str | None = None
+    series_kind: str = ""
+    latest_episode: int | None = None
 
 
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -934,6 +939,7 @@ def story_to_index_entry(story: Story) -> IndexEntry:
         sequence_label=story.sequence_label,
         character_count=story.character_count,
         reading_minutes=story.reading_minutes,
+        latest_slug=story.slug,
     )
 
 
@@ -944,6 +950,40 @@ def make_index_entries(stories: list[Story]) -> list[IndexEntry]:
 
     while index < len(stories):
         story = stories[index]
+
+        if story.series and story.episode is not None:
+            group = [story]
+            next_index = index + 1
+            expected_episode = story.episode + 1
+            while next_index < len(stories):
+                next_story = stories[next_index]
+                if next_story.series != story.series or next_story.episode != expected_episode:
+                    break
+                group.append(next_story)
+                next_index += 1
+                expected_episode += 1
+
+            latest_story = group[-1]
+            sequence_label = story.sequence_label
+            if len(group) > 1:
+                sequence_label = f"{story.sequence_label}-{latest_story.sequence_label}"
+            entries.append(
+                IndexEntry(
+                    slug=story.slug,
+                    title=story.series,
+                    excerpt=latest_story.excerpt,
+                    sequence_label=sequence_label,
+                    character_count=sum(part.character_count for part in group),
+                    reading_minutes=sum(part.reading_minutes for part in group),
+                    part_count=len(group),
+                    latest_slug=latest_story.slug,
+                    series_kind="episode",
+                    latest_episode=latest_story.episode,
+                )
+            )
+            index = next_index
+            continue
+
         title_match = SERIAL_TITLE_PATTERN.match(story.title)
         if not title_match:
             entries.append(story_to_index_entry(story))
@@ -980,6 +1020,8 @@ def make_index_entries(stories: list[Story]) -> list[IndexEntry]:
                 character_count=sum(part.character_count for part in group),
                 reading_minutes=sum(part.reading_minutes for part in group),
                 part_count=len(group),
+                latest_slug=group[0].slug,
+                series_kind="parts",
             )
         )
         index = next_index
@@ -1093,7 +1135,17 @@ def parse_markdown(text: str, fallback_title: str) -> tuple[str, list[Section], 
 def render_index_entry_row(entry: IndexEntry, base_href: str) -> str:
     series_note = ""
     meta_prefix = ""
-    if entry.part_count > 1:
+    if entry.series_kind == "episode":
+        episode_status = (
+            "第1話公開"
+            if entry.latest_episode == 1
+            else f"第{entry.latest_episode}話まで公開"
+        )
+        series_note = (
+            f'\n                  <span class="series-parts">連載・{episode_status}</span>'
+        )
+        meta_prefix = f"{entry.part_count}話 / "
+    elif entry.part_count > 1:
         series_note = (
             f'\n                  <span class="series-parts">全{entry.part_count}編・前編から読む</span>'
         )
@@ -1128,6 +1180,20 @@ def render_index_page(stories: list[Story], archived_stories: list[Story]) -> st
     if stories:
         index_entries = make_index_entries(stories)
         latest_entry = index_entries[-1]
+        latest_href = latest_entry.latest_slug or latest_entry.slug
+        if latest_entry.series_kind == "episode":
+            latest_series_note = (
+                f'<span class="series-parts">連載・第{latest_entry.latest_episode}話を読む</span>'
+            )
+            latest_series_meta = f'<span class="meta-chip">第{latest_entry.latest_episode}話</span>'
+        elif latest_entry.part_count > 1:
+            latest_series_note = (
+                f'<span class="series-parts">全{latest_entry.part_count}編・前編から読む</span>'
+            )
+            latest_series_meta = f'<span class="meta-chip">全{latest_entry.part_count}編</span>'
+        else:
+            latest_series_note = ""
+            latest_series_meta = ""
         total_characters = sum(story.character_count for story in stories)
         total_minutes = sum(story.reading_minutes for story in stories)
         rows = render_story_rows(stories, "stories", group_serials=True)
@@ -1162,18 +1228,18 @@ def render_index_page(stories: list[Story], archived_stories: list[Story]) -> st
               </div>
             </dl>
           </div>
-          <a class="latest-panel" href="stories/{latest_entry.slug}.html">
+          <a class="latest-panel" href="stories/{latest_href}.html">
             <span class="latest-top">
               <span class="kicker">Latest</span>
               <span class="story-number">{escape(latest_entry.sequence_label)}</span>
             </span>
             <span>
               <span class="latest-title">{escape(latest_entry.title)}</span>
-              {f'<span class="series-parts">全{latest_entry.part_count}編・前編から読む</span>' if latest_entry.part_count > 1 else ''}
+              {latest_series_note}
               <span class="latest-excerpt">{escape(latest_entry.excerpt)}</span>
             </span>
             <span class="meta-row">
-              {f'<span class="meta-chip">全{latest_entry.part_count}編</span>' if latest_entry.part_count > 1 else ''}
+              {latest_series_meta}
               <span class="meta-chip">{latest_entry.character_count}字</span>
               <span class="meta-chip">約{latest_entry.reading_minutes}分</span>
             </span>
@@ -1371,6 +1437,12 @@ def load_story(path: Path) -> Story:
     description = metadata.get("description", make_excerpt(plain_text, limit=140))
     excerpt = metadata.get("excerpt", make_excerpt(plain_text))
     character_count = len(re.sub(r"\s+", "", plain_text))
+    episode = None
+    if metadata.get("episode"):
+        try:
+            episode = int(metadata["episode"])
+        except ValueError as exc:
+            raise ValueError(f"Invalid episode number in {path}: {metadata['episode']}") from exc
 
     return Story(
         slug=path.stem,
@@ -1383,6 +1455,8 @@ def load_story(path: Path) -> Story:
         sections=sections,
         character_count=character_count,
         reading_minutes=estimate_reading_minutes(character_count),
+        series=metadata.get("series", ""),
+        episode=episode,
     )
 
 
