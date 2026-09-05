@@ -24,6 +24,8 @@ SITE_DIR = ROOT / "site"
 STORIES_DIR = ROOT / "stories"
 ARCHIVE_DIR = ROOT / "archive" / "initial"
 BUILD_SCRIPT = Path(__file__).resolve().parent / "build_site.py"
+WEB_DIR = ROOT / "web"
+CONTENT_DIR = ROOT / "content"
 RELOAD_ENDPOINT = "/__reload__"
 RELOAD_EVENT_ENDPOINT = "/__events__"
 
@@ -303,12 +305,13 @@ def rebuild_after_change(reload_state: ReloadState) -> None:
 
 
 def collect_watch_snapshot() -> dict[str, int]:
-    watched_paths = {BUILD_SCRIPT, *STORIES_DIR.glob("*.md")}
+    watched_paths = {*BUILD_SCRIPT.parent.glob("*.py"), *STORIES_DIR.glob("*.md"),
+                     *WEB_DIR.glob("*"), *CONTENT_DIR.glob("*.json")}
     if ARCHIVE_DIR.exists():
         watched_paths.update(ARCHIVE_DIR.glob("*.md"))
     snapshot: dict[str, int] = {}
     for path in watched_paths:
-        if path.exists():
+        if path.is_file():
             snapshot[str(path)] = path.stat().st_mtime_ns
     return snapshot
 
@@ -343,6 +346,8 @@ class InotifySourceWatcher:
         if ARCHIVE_DIR.exists():
             self.add_watch(ARCHIVE_DIR)
         self.add_watch(BUILD_SCRIPT.parent)
+        self.add_watch(WEB_DIR)
+        self.add_watch(CONTENT_DIR)
 
     def add_watch(self, path: Path) -> None:
         watch_descriptor = self.libc.inotify_add_watch(
@@ -395,7 +400,9 @@ class InotifySourceWatcher:
             name = os.fsdecode(raw_name) if raw_name else ""
             if path in (STORIES_DIR, ARCHIVE_DIR) and (not name or name.endswith(".md")):
                 changed = True
-            elif path == BUILD_SCRIPT.parent and name == BUILD_SCRIPT.name:
+            elif path == BUILD_SCRIPT.parent and name.endswith(".py"):
+                changed = True
+            elif path in (WEB_DIR, CONTENT_DIR):
                 changed = True
             elif mask & IN_Q_OVERFLOW:
                 changed = True

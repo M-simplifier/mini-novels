@@ -1,1545 +1,339 @@
 #!/usr/bin/env python3
-
+"""Build the reading room with only Python's standard library."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from html import escape
+from hashlib import sha256
+from html import escape as e
+import importlib
+import json
 from pathlib import Path
 import re
-
+import shutil
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
-STORIES_DIR = ROOT / "stories"
-ARCHIVE_DIR = ROOT / "archive" / "initial"
-SITE_DIR = ROOT / "site"
-SITE_STORIES_DIR = SITE_DIR / "stories"
-SITE_ARCHIVE_DIR = SITE_DIR / "archive"
-SITE_ARCHIVE_STORIES_DIR = SITE_ARCHIVE_DIR / "stories"
-SITE_ASSETS_DIR = SITE_DIR / "assets"
-
-SITE_TITLE = "Mini Novels"
-SITE_SUBTITLE = "短編小説のための小さな読書室。"
-
-INLINE_CODE_PATTERN = re.compile(r"(`[^`]+`)")
-ORDERED_LIST_PATTERN = re.compile(r"^\d+\.\s+")
-FRONT_MATTER_PATTERN = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n?(.*)$", re.DOTALL)
-SERIAL_TITLE_PATTERN = re.compile(r"^(.+?)（(前編|中編|後編)）$")
-
-STYLE_CSS = """\
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Noto+Serif+JP:wght@400;600;700;900&display=swap");
-
-:root {
-  --page: #f4f5f2;
-  --surface: #fbfbf7;
-  --surface-soft: #eef0eb;
-  --ink: #191d20;
-  --ink-soft: #343a3d;
-  --muted: #6f7572;
-  --rule: #c7cec4;
-  --rule-strong: #90998f;
-  --accent: #8b2635;
-  --accent-deep: #561821;
-  --teal: #26615c;
-  --focus: #134fbd;
-  --shadow: 0 18px 54px rgba(25, 29, 32, 0.08);
-  --measure: 42rem;
-  --shell: 1180px;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  color: var(--ink);
-  background:
-    linear-gradient(90deg, rgba(25, 29, 32, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(25, 29, 32, 0.025) 1px, transparent 1px),
-    linear-gradient(180deg, #fbfbf7 0%, var(--page) 42%, #e7ebe5 100%);
-  background-size: 72px 72px, 100% 34px, auto;
-  font-family:
-    "Noto Serif JP",
-    "BIZ UDPMincho",
-    "Hiragino Mincho ProN",
-    "Yu Mincho",
-    serif;
-  line-height: 1.9;
-  text-rendering: optimizeLegibility;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-a:hover {
-  color: var(--accent);
-}
-
-a:focus-visible,
-button:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 4px;
-}
-
-.skip-link {
-  position: fixed;
-  top: 14px;
-  left: 14px;
-  z-index: 20;
-  transform: translateY(-160%);
-  padding: 9px 13px;
-  background: var(--ink);
-  color: var(--surface);
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-  font-size: 0.85rem;
-}
-
-.skip-link:focus {
-  transform: translateY(0);
-}
-
-.site-shell {
-  width: min(var(--shell), calc(100vw - 44px));
-  margin: 0 auto;
-  padding: 26px 0 82px;
-}
-
-.site-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  min-height: 44px;
-  border-bottom: 1px solid var(--rule);
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--ink);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.site-mark {
-  color: var(--muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.site-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 16px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.site-nav a {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.home-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
-  gap: clamp(28px, 6vw, 78px);
-  align-items: stretch;
-  padding: clamp(42px, 8vw, 92px) 0 clamp(36px, 7vw, 78px);
-  border-bottom: 1px solid var(--rule);
-}
-
-.home-intro {
-  display: flex;
-  min-height: 360px;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.kicker,
-.story-number,
-.row-number,
-.meta-chip,
-.site-stat,
-.story-label,
-.story-toc h2,
-.nav-link {
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-}
-
-.kicker {
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.home-title {
-  max-width: 8em;
-  margin: 18px 0 0;
-  font-size: clamp(4rem, 12vw, 9.5rem);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 0.88;
-}
-
-.home-copy {
-  max-width: 30rem;
-  margin: 24px 0 0;
-  color: var(--ink-soft);
-  font-size: clamp(1.06rem, 0.5vw + 1rem, 1.28rem);
-}
-
-.collection-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, max-content));
-  gap: 18px 34px;
-  margin: 38px 0 0;
-}
-
-.collection-meta div {
-  min-width: 0;
-}
-
-.collection-meta dt {
-  color: var(--muted);
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.collection-meta dd {
-  margin: 5px 0 0;
-  color: var(--ink);
-  font-size: 1.25rem;
-  line-height: 1.25;
-}
-
-.latest-panel {
-  position: relative;
-  display: flex;
-  min-height: 360px;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: clamp(26px, 4vw, 44px);
-  overflow: hidden;
-  border: 1px solid var(--rule-strong);
-  background:
-    linear-gradient(135deg, rgba(139, 38, 53, 0.08), transparent 38%),
-    var(--surface);
-  box-shadow: var(--shadow);
-}
-
-.latest-panel::before {
-  content: "";
-  position: absolute;
-  inset: 16px;
-  pointer-events: none;
-  border: 1px solid rgba(144, 153, 143, 0.42);
-}
-
-.latest-panel:hover {
-  color: var(--ink);
-  border-color: var(--accent);
-}
-
-.latest-panel:hover .latest-title {
-  color: var(--accent-deep);
-}
-
-.latest-top {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 22px;
-}
-
-.story-number {
-  color: var(--teal);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-}
-
-.latest-title {
-  display: block;
-  max-width: 11em;
-  margin: 72px 0 0;
-  font-size: clamp(2rem, 5vw, 4.3rem);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.08;
-  transition: color 180ms ease;
-}
-
-.latest-excerpt {
-  display: block;
-  max-width: 36rem;
-  margin: 22px 0 0;
-  color: var(--ink-soft);
-  font-size: 1.03rem;
-}
-
-.series-parts {
-  display: block;
-  margin-top: 9px;
-  color: var(--teal);
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 22px;
-}
-
-.meta-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 3px 9px;
-  border: 1px solid var(--rule);
-  color: var(--muted);
-  background: rgba(251, 251, 247, 0.72);
-  font-size: 0.76rem;
-  line-height: 1.3;
-}
-
-.catalog {
-  padding-top: clamp(36px, 6vw, 72px);
-}
-
-.edition-note {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  gap: 24px;
-  align-items: end;
-  margin-top: 26px;
-  padding: 22px 0;
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-}
-
-.edition-note p {
-  max-width: 42rem;
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: 0.98rem;
-}
-
-.edition-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 6px 13px;
-  border: 1px solid var(--rule-strong);
-  color: var(--accent-deep);
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.edition-link:hover {
-  border-color: var(--accent);
-}
-
-.archive-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 0.78fr) minmax(280px, 0.72fr);
-  gap: clamp(28px, 6vw, 76px);
-  align-items: end;
-  padding: clamp(42px, 8vw, 92px) 0 clamp(34px, 6vw, 66px);
-  border-bottom: 1px solid var(--rule);
-}
-
-.archive-title {
-  max-width: 11em;
-  margin: 18px 0 0;
-  font-size: clamp(3.4rem, 9vw, 7rem);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 0.95;
-}
-
-.archive-copy {
-  margin: 0;
-  color: var(--ink-soft);
-  font-size: clamp(1.02rem, 0.45vw + 1rem, 1.22rem);
-}
-
-.section-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  gap: 20px;
-  align-items: end;
-  margin-bottom: 18px;
-}
-
-.section-heading h2 {
-  margin: 8px 0 0;
-  font-size: clamp(1.65rem, 3vw, 2.8rem);
-  line-height: 1.15;
-}
-
-.site-stat {
-  color: var(--muted);
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.story-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--ink);
-}
-
-.story-row {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) minmax(112px, max-content);
-  gap: 22px;
-  align-items: baseline;
-  padding: 21px 0 23px;
-  border-bottom: 1px solid var(--rule);
-}
-
-.story-row:hover {
-  color: var(--ink);
-}
-
-.story-row:hover .row-title {
-  color: var(--accent-deep);
-}
-
-.row-number {
-  color: var(--teal);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-}
-
-.row-title {
-  display: block;
-  font-size: clamp(1.24rem, 1.2vw + 1rem, 1.75rem);
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.row-excerpt {
-  display: block;
-  max-width: 62rem;
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.94rem;
-  line-height: 1.75;
-}
-
-.row-meta {
-  color: var(--muted);
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.empty-state {
-  padding: 32px 0;
-  border-top: 1px solid var(--ink);
-  border-bottom: 1px solid var(--rule);
-  color: var(--muted);
-}
-
-.reader-shell {
-  display: grid;
-  grid-template-columns: minmax(180px, 240px) minmax(0, var(--measure));
-  gap: clamp(32px, 7vw, 96px);
-  justify-content: center;
-  padding: clamp(42px, 7vw, 82px) 0 0;
-}
-
-.reader-rail {
-  position: sticky;
-  top: 28px;
-  align-self: start;
-  padding-top: 8px;
-  color: var(--muted);
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-  font-size: 0.82rem;
-  line-height: 1.6;
-}
-
-.reader-rail::before {
-  content: "";
-  display: block;
-  width: 42px;
-  height: 2px;
-  margin-bottom: 18px;
-  background: var(--accent);
-}
-
-.story-label {
-  margin: 0 0 6px;
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.rail-block {
-  padding: 18px 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.rail-block:first-of-type {
-  border-top: 1px solid var(--rule);
-}
-
-.rail-block p {
-  margin: 0;
-}
-
-.story-toc {
-  margin-top: 18px;
-}
-
-.story-toc h2 {
-  margin: 0 0 10px;
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.story-toc ol {
-  margin: 0;
-  padding-left: 1.1em;
-}
-
-.story-toc li + li {
-  margin-top: 0.52em;
-}
-
-.story-toc a {
-  color: var(--muted);
-}
-
-.story-toc a:hover {
-  color: var(--accent);
-}
-
-.reader-main {
-  min-width: 0;
-}
-
-.story-head {
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--ink);
-}
-
-.story-title {
-  max-width: 13em;
-  margin: 16px 0 0;
-  font-size: clamp(2.25rem, 5.3vw, 5rem);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.08;
-  overflow-wrap: anywhere;
-  word-break: keep-all;
-}
-
-.story-intro {
-  margin: 20px 0 0;
-  color: var(--ink-soft);
-  font-size: clamp(1rem, 0.35vw + 0.98rem, 1.15rem);
-  line-height: 1.9;
-}
-
-.story-body {
-  margin-top: clamp(34px, 5vw, 56px);
-  font-size: clamp(1.1rem, 0.55vw + 1rem, 1.24rem);
-  letter-spacing: 0;
-  line-height: 2.18;
-}
-
-.story-body h1 {
-  display: none;
-}
-
-.story-body h2,
-.story-body h3 {
-  margin: 2.6em 0 1em;
-  font-family:
-    "Avenir Next",
-    "Noto Sans JP",
-    "Hiragino Sans",
-    "Yu Gothic",
-    sans-serif;
-  letter-spacing: 0;
-  line-height: 1.5;
-}
-
-.story-body h2 {
-  font-size: 1.22em;
-}
-
-.story-body h3 {
-  color: var(--muted);
-  font-size: 1.08em;
-}
-
-.story-body p,
-.story-body ul,
-.story-body ol,
-.story-body blockquote {
-  margin: 0 0 1.18em;
-}
-
-.story-body ul,
-.story-body ol {
-  padding-left: 1.35em;
-}
-
-.story-body code {
-  padding: 0.12em 0.34em;
-  border: 1px solid rgba(38, 97, 92, 0.18);
-  background: rgba(38, 97, 92, 0.06);
-  color: var(--teal);
-  font-size: 0.88em;
-}
-
-.story-body .display-code {
-  text-align: center;
-  margin: 1.5em 0;
-}
-
-.story-body .display-code code {
-  display: inline-block;
-  padding: 0.46em 0.84em;
-  font-size: 0.92em;
-}
-
-.story-body blockquote {
-  padding: 0.2em 0 0.2em 1.05em;
-  border-left: 2px solid var(--accent);
-  color: var(--ink-soft);
-}
-
-.footer-nav {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-  margin-top: clamp(38px, 6vw, 70px);
-  padding-top: 18px;
-  border-top: 1px solid var(--rule);
-}
-
-.nav-link {
-  display: flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  border: 1px solid var(--rule);
-  background: rgba(251, 251, 247, 0.72);
-  color: var(--ink-soft);
-  font-size: 0.78rem;
-  line-height: 1.35;
-  text-align: center;
-}
-
-.nav-link:hover {
-  border-color: var(--accent);
-  color: var(--accent-deep);
-}
-
-@media (max-width: 900px) {
-  .home-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .home-intro,
-  .latest-panel {
-    min-height: 0;
-  }
-
-  .latest-title {
-    margin-top: 58px;
-  }
-
-  .reader-shell {
-    grid-template-columns: 1fr;
-    gap: 30px;
-    max-width: var(--measure);
-    margin: 0 auto;
-  }
-
-  .reader-rail {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 18px;
-    padding-top: 0;
-  }
-
-  .reader-rail::before {
-    grid-column: 1 / -1;
-  }
-
-  .story-toc {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 680px) {
-  .site-shell {
-    width: min(100vw - 26px, var(--shell));
-    padding-top: 18px;
-  }
-
-  .site-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0;
-    padding-bottom: 10px;
-  }
-
-  .site-mark {
-    font-size: 0.72rem;
-  }
-
-  .site-nav {
-    width: 100%;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 0.72rem;
-  }
-
-  .home-layout {
-    padding-top: 36px;
-  }
-
-  .home-title {
-    font-size: clamp(3.5rem, 20vw, 5.8rem);
-  }
-
-  .collection-meta {
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .latest-panel {
-    padding: 22px;
-  }
-
-  .latest-panel::before {
-    inset: 10px;
-  }
-
-  .latest-title {
-    margin-top: 42px;
-  }
-
-  .section-heading {
-    grid-template-columns: 1fr;
-  }
-
-  .edition-note,
-  .archive-hero {
-    grid-template-columns: 1fr;
-  }
-
-  .story-row {
-    grid-template-columns: 52px minmax(0, 1fr);
-    gap: 14px;
-  }
-
-  .row-meta {
-    grid-column: 2;
-  }
-
-  .reader-shell {
-    padding-top: 34px;
-  }
-
-  .reader-rail {
-    grid-template-columns: 1fr;
-  }
-
-  .story-title {
-    font-size: clamp(2rem, 10vw, 2.4rem);
-  }
-
-  .story-body {
-    font-size: 1.08rem;
-    line-height: 2.08;
-  }
-
-  .footer-nav {
-    grid-template-columns: 1fr;
-  }
-}
-"""
+if str(ROOT / 'scripts') not in sys.path:
+    sys.path.insert(0, str(ROOT / 'scripts'))
+import manuscripts
+
+SITE = ROOT / 'site'
+PUBLIC_URL = 'https://m-simplifier.github.io/mini-novels/'
+DESCRIPTION = 'Mini Novelsは、短編小説と連載小説を読める小さな作品集です。'
+ASSET_VERSION = ''
+READING_INDEX = {}
 
 
 @dataclass
-class Section:
-    id: str
-    title: str
-
-
-@dataclass
-class Story:
+class Work:
     slug: str
     title: str
     description: str
-    excerpt: str
-    source_name: str
-    sequence_label: str
-    html_body: str
-    sections: list[Section]
-    character_count: int
-    reading_minutes: int
-    series: str = ""
-    episode: int | None = None
-
-
-@dataclass
-class IndexEntry:
-    slug: str
-    title: str
-    excerpt: str
-    sequence_label: str
-    character_count: int
-    reading_minutes: int
-    part_count: int = 1
-    latest_slug: str | None = None
-    series_kind: str = ""
-    latest_episode: int | None = None
-
-
-def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
-    match = FRONT_MATTER_PATTERN.match(text)
-    if not match:
-        return {}, text
-
-    raw_meta, body = match.groups()
-    metadata: dict[str, str] = {}
-    for line in raw_meta.splitlines():
-        if ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        metadata[key.strip().lower()] = value.strip()
-    return metadata, body
-
-
-def render_inline(text: str) -> str:
-    parts = INLINE_CODE_PATTERN.split(text)
-    rendered: list[str] = []
-    for part in parts:
-        if part.startswith("`") and part.endswith("`") and len(part) >= 2:
-            rendered.append(f"<code>{escape(part[1:-1])}</code>")
-        else:
-            rendered.append(escape(part))
-    return "".join(rendered)
-
-
-def is_display_code(lines: list[str]) -> bool:
-    return bool(lines) and all(
-        line.strip().startswith("`") and line.strip().endswith("`")
-        for line in lines
-    )
-
-
-def make_excerpt(text: str, limit: int = 110) -> str:
-    compact = re.sub(r"\s+", " ", text).strip()
-    if len(compact) <= limit:
-        return compact
-    return compact[: limit - 1].rstrip() + "…"
-
-
-def estimate_reading_minutes(character_count: int) -> int:
-    return max(1, round(character_count / 700))
-
-
-def make_sequence_label(slug: str) -> str:
-    match = re.match(r"^(\d+)", slug)
-    return match.group(1) if match else slug
-
-
-def story_to_index_entry(story: Story) -> IndexEntry:
-    return IndexEntry(
-        slug=story.slug,
-        title=story.title,
-        excerpt=story.excerpt,
-        sequence_label=story.sequence_label,
-        character_count=story.character_count,
-        reading_minutes=story.reading_minutes,
-        latest_slug=story.slug,
-    )
-
-
-def make_index_entries(stories: list[Story]) -> list[IndexEntry]:
-    entries: list[IndexEntry] = []
-    index = 0
-    part_order = {"前編": 0, "中編": 1, "後編": 2}
-
-    while index < len(stories):
-        story = stories[index]
-
-        if story.series and story.episode is not None:
-            group = [story]
-            next_index = index + 1
-            expected_episode = story.episode + 1
-            while next_index < len(stories):
-                next_story = stories[next_index]
-                if next_story.series != story.series or next_story.episode != expected_episode:
-                    break
-                group.append(next_story)
-                next_index += 1
-                expected_episode += 1
-
-            latest_story = group[-1]
-            sequence_label = story.sequence_label
-            if len(group) > 1:
-                sequence_label = f"{story.sequence_label}-{latest_story.sequence_label}"
-            entries.append(
-                IndexEntry(
-                    slug=story.slug,
-                    title=story.series,
-                    excerpt=latest_story.excerpt,
-                    sequence_label=sequence_label,
-                    character_count=sum(part.character_count for part in group),
-                    reading_minutes=sum(part.reading_minutes for part in group),
-                    part_count=len(group),
-                    latest_slug=latest_story.slug,
-                    series_kind="episode",
-                    latest_episode=latest_story.episode,
-                )
-            )
-            index = next_index
-            continue
-
-        title_match = SERIAL_TITLE_PATTERN.match(story.title)
-        if not title_match:
-            entries.append(story_to_index_entry(story))
-            index += 1
-            continue
-
-        series_title, part_label = title_match.groups()
-        group = [story]
-        next_index = index + 1
-        expected_order = part_order[part_label] + 1
-        while next_index < len(stories):
-            next_match = SERIAL_TITLE_PATTERN.match(stories[next_index].title)
-            if not next_match:
-                break
-            next_title, next_part_label = next_match.groups()
-            if next_title != series_title or part_order[next_part_label] != expected_order:
-                break
-            group.append(stories[next_index])
-            next_index += 1
-            expected_order += 1
-
-        if len(group) == 1:
-            entries.append(story_to_index_entry(story))
-            index += 1
-            continue
-
-        excerpt = re.sub(r"^[一二三四五六七八九十]+\s+", "", group[0].excerpt)
-        entries.append(
-            IndexEntry(
-                slug=group[0].slug,
-                title=series_title,
-                excerpt=excerpt,
-                sequence_label=f"{group[0].sequence_label}-{group[-1].sequence_label}",
-                character_count=sum(part.character_count for part in group),
-                reading_minutes=sum(part.reading_minutes for part in group),
-                part_count=len(group),
-                latest_slug=group[0].slug,
-                series_kind="parts",
-            )
-        )
-        index = next_index
-
-    return entries
-
-
-def parse_markdown(text: str, fallback_title: str) -> tuple[str, list[Section], str, str]:
-    blocks: list[str] = []
-    sections: list[Section] = []
-    plain_parts: list[str] = []
-    paragraph_lines: list[str] = []
-    list_kind: str | None = None
-    list_items: list[str] = []
-    title = fallback_title
-    heading_index = 0
-
-    def flush_paragraph() -> None:
-        nonlocal paragraph_lines
-        if not paragraph_lines:
-            return
-
-        rendered_lines = [render_inline(line) for line in paragraph_lines]
-        joined_text = "<br>\n".join(rendered_lines)
-        if is_display_code(paragraph_lines):
-            blocks.append(f'<p class="display-code">{joined_text}</p>')
-        else:
-            blocks.append(f"<p>{joined_text}</p>")
-        plain_parts.append("\n".join(paragraph_lines))
-        paragraph_lines = []
-
-    def flush_list() -> None:
-        nonlocal list_kind, list_items
-        if not list_kind or not list_items:
-            list_kind = None
-            list_items = []
-            return
-
-        tag = "ul" if list_kind == "ul" else "ol"
-        items_html = "\n".join(f"<li>{item}</li>" for item in list_items)
-        blocks.append(f"<{tag}>\n{items_html}\n</{tag}>")
-        plain_parts.extend(list_items)
-        list_kind = None
-        list_items = []
-
-    for raw_line in text.splitlines():
-        line = raw_line.rstrip()
-        stripped = line.strip()
-
-        if not stripped:
-            flush_paragraph()
-            flush_list()
-            continue
-
-        if stripped.startswith("#"):
-            flush_paragraph()
-            flush_list()
-
-            level = len(stripped) - len(stripped.lstrip("#"))
-            heading_text = stripped[level:].strip()
-            if not heading_text:
-                continue
-
-            if level == 1:
-                title = heading_text
-            else:
-                heading_index += 1
-                heading_id = f"section-{heading_index}"
-                if level == 2:
-                    sections.append(Section(id=heading_id, title=heading_text))
-                blocks.append(f'<h{level} id="{heading_id}">{render_inline(heading_text)}</h{level}>')
-                plain_parts.append(heading_text)
-            continue
-
-        if stripped.startswith("> "):
-            flush_paragraph()
-            flush_list()
-            quote_text = stripped[2:].strip()
-            blocks.append(f"<blockquote>{render_inline(quote_text)}</blockquote>")
-            plain_parts.append(quote_text)
-            continue
-
-        if stripped.startswith("- ") or stripped.startswith("* "):
-            flush_paragraph()
-            item_text = stripped[2:].strip()
-            if list_kind not in (None, "ul"):
-                flush_list()
-            list_kind = "ul"
-            list_items.append(render_inline(item_text))
-            continue
-
-        if ORDERED_LIST_PATTERN.match(stripped):
-            flush_paragraph()
-            item_text = ORDERED_LIST_PATTERN.sub("", stripped, count=1).strip()
-            if list_kind not in (None, "ol"):
-                flush_list()
-            list_kind = "ol"
-            list_items.append(render_inline(item_text))
-            continue
-
-        paragraph_lines.append(line)
-
-    flush_paragraph()
-    flush_list()
-
-    html_body = "\n".join(blocks)
-    plain_text = "\n".join(plain_parts).strip()
-    return title, sections, html_body, plain_text
-
-
-def render_index_entry_row(entry: IndexEntry, base_href: str) -> str:
-    series_note = ""
-    meta_prefix = ""
-    if entry.series_kind == "episode":
-        episode_status = (
-            "第1話公開"
-            if entry.latest_episode == 1
-            else f"第{entry.latest_episode}話まで公開"
-        )
-        series_note = (
-            f'\n                  <span class="series-parts">連載・{episode_status}</span>'
-        )
-        meta_prefix = f"{entry.part_count}話 / "
-    elif entry.part_count > 1:
-        series_note = (
-            f'\n                  <span class="series-parts">全{entry.part_count}編・前編から読む</span>'
-        )
-        meta_prefix = f"全{entry.part_count}編 / "
-
-    return f"""
-            <li>
-              <a class="story-row" href="{base_href}/{entry.slug}.html">
-                <span class="row-number">{escape(entry.sequence_label)}</span>
-                <span class="row-main">
-                  <span class="row-title">{escape(entry.title)}</span>{series_note}
-                  <span class="row-excerpt">{escape(entry.excerpt)}</span>
-                </span>
-                <span class="row-meta">{meta_prefix}{entry.character_count}字 / 約{entry.reading_minutes}分</span>
-              </a>
-            </li>
-            """.strip()
-
-
-def render_story_rows(stories: list[Story], base_href: str, *, group_serials: bool = False) -> str:
-    entries = make_index_entries(stories) if group_serials else [
-        story_to_index_entry(story) for story in stories
-    ]
-
-    return "\n".join(
-        render_index_entry_row(entry, base_href)
-        for entry in reversed(entries)
-    )
-
-
-def render_index_page(stories: list[Story], archived_stories: list[Story]) -> str:
-    if stories:
-        index_entries = make_index_entries(stories)
-        latest_entry = index_entries[-1]
-        latest_href = latest_entry.latest_slug or latest_entry.slug
-        if latest_entry.series_kind == "episode":
-            latest_series_note = (
-                f'<span class="series-parts">連載・第{latest_entry.latest_episode}話を読む</span>'
-            )
-            latest_series_meta = f'<span class="meta-chip">第{latest_entry.latest_episode}話</span>'
-        elif latest_entry.part_count > 1:
-            latest_series_note = (
-                f'<span class="series-parts">全{latest_entry.part_count}編・前編から読む</span>'
-            )
-            latest_series_meta = f'<span class="meta-chip">全{latest_entry.part_count}編</span>'
-        else:
-            latest_series_note = ""
-            latest_series_meta = ""
-        total_characters = sum(story.character_count for story in stories)
-        total_minutes = sum(story.reading_minutes for story in stories)
-        rows = render_story_rows(stories, "stories", group_serials=True)
-        archive_note = ""
-        if archived_stories:
-            archive_note = f"""
-          <div class="edition-note">
-            <p>初期版の作品は、現行版とは別の読書室として保存しています。改稿が済んだ作品から、現行目次へ戻していきます。</p>
-            <a class="edition-link" href="archive/index.html">初期版アーカイブ</a>
-          </div>
-            """.strip()
-        body = f"""
-        <section class="home-layout" aria-labelledby="home-title">
-          <div class="home-intro">
-            <div>
-              <p class="kicker">Reading Room</p>
-              <h1 class="home-title" id="home-title">{escape(SITE_TITLE)}</h1>
-              <p class="home-copy">{escape(SITE_SUBTITLE)}</p>
-            </div>
-            <dl class="collection-meta">
-              <div>
-                <dt>Works</dt>
-                <dd>{len(index_entries)}</dd>
-              </div>
-              <div>
-                <dt>Reading</dt>
-                <dd>約{total_minutes}分</dd>
-              </div>
-              <div>
-                <dt>Letters</dt>
-                <dd>{total_characters}字</dd>
-              </div>
-            </dl>
-          </div>
-          <a class="latest-panel" href="stories/{latest_href}.html">
-            <span class="latest-top">
-              <span class="kicker">Latest</span>
-              <span class="story-number">{escape(latest_entry.sequence_label)}</span>
-            </span>
-            <span>
-              <span class="latest-title">{escape(latest_entry.title)}</span>
-              {latest_series_note}
-              <span class="latest-excerpt">{escape(latest_entry.excerpt)}</span>
-            </span>
-            <span class="meta-row">
-              {latest_series_meta}
-              <span class="meta-chip">{latest_entry.character_count}字</span>
-              <span class="meta-chip">約{latest_entry.reading_minutes}分</span>
-            </span>
-          </a>
-        </section>
-        {archive_note}
-        <section class="catalog" aria-labelledby="catalog-title">
-          <div class="section-heading">
-            <div>
-              <p class="kicker">Current Edition</p>
-              <h2 id="catalog-title">作品目次</h2>
-            </div>
-            <div class="site-stat">{len(index_entries)} works</div>
-          </div>
-          <ol class="story-list">
-            {rows}
-          </ol>
-        </section>
-        """.strip()
-    else:
-        body = '<section class="empty-state">`stories/` に Markdown を置くと、ここに一覧が出ます。</section>'
-
-    return render_page(
-        page_title="Home",
-        stylesheet_path="assets/style.css",
-        main_content=body,
-        home_href="index.html",
-        archive_href="archive/index.html" if archived_stories else None,
-    )
-
-
-def render_archive_index_page(stories: list[Story]) -> str:
-    total_characters = sum(story.character_count for story in stories)
-    total_minutes = sum(story.reading_minutes for story in stories)
-    rows = render_story_rows(stories, "stories")
-
-    return render_page(
-        page_title="初期版アーカイブ",
-        stylesheet_path="../assets/style.css",
-        main_content=f"""
-        <section class="archive-hero" aria-labelledby="archive-title">
-          <div>
-            <p class="kicker">Initial Edition</p>
-            <h1 class="archive-title" id="archive-title">初期版<br>アーカイブ</h1>
-          </div>
-          <p class="archive-copy">改稿前の作品を、現行版とは別の読書室として保存しています。作品の変化を追うための静かな保管棚です。</p>
-        </section>
-        <section class="catalog" aria-labelledby="archive-catalog-title">
-          <div class="section-heading">
-            <div>
-              <p class="kicker">Archive</p>
-              <h2 id="archive-catalog-title">初期版目次</h2>
-            </div>
-            <div class="site-stat">{len(stories)} stories / 約{total_minutes}分 / {total_characters}字</div>
-          </div>
-          <ol class="story-list">
-            {rows}
-          </ol>
-        </section>
-        """.strip(),
-        home_href="../index.html",
-        archive_href="index.html",
-    )
-
-
-def render_story_page(
-    stories: list[Story],
-    index: int,
-    *,
-    stylesheet_path: str,
-    home_href: str,
-    archive_href: str | None,
-    story_kind: str,
-    back_label: str,
-    back_href: str | None = None,
-    cross_edition_story: Story | None = None,
-    cross_edition_href: str | None = None,
-) -> str:
-    story = stories[index]
-    previous_story = stories[index - 1] if index > 0 else None
-    next_story = stories[index + 1] if index < len(stories) - 1 else None
-
-    if story.sections:
-        toc_items = "\n".join(
-            f'<li><a href="#{section.id}">{escape(section.title)}</a></li>'
-            for section in story.sections
-        )
-        toc_html = f"""
-        <div class="story-toc">
-          <h2>Contents</h2>
-          <ol>
-            {toc_items}
-          </ol>
-        </div>
-        """.strip()
-    else:
-        toc_html = ""
-    toc_block = f"\n            {toc_html}" if toc_html else ""
-
-    footer_links = [f'<a class="nav-link" href="{back_href or home_href}">{escape(back_label)}</a>']
-    if cross_edition_story and cross_edition_href:
-        footer_links.append(
-            f'<a class="nav-link" href="{cross_edition_href}">別版: {escape(cross_edition_story.title)}</a>'
-        )
-    if previous_story:
-        footer_links.append(
-            f'<a class="nav-link" href="{previous_story.slug}.html">前の話: {escape(previous_story.title)}</a>'
-        )
-    if next_story:
-        footer_links.append(
-            f'<a class="nav-link" href="{next_story.slug}.html">次の話: {escape(next_story.title)}</a>'
-        )
-
-    return render_page(
-        page_title=story.title,
-        stylesheet_path=stylesheet_path,
-        main_content=f"""
-        <article class="reader-shell">
-          <aside class="reader-rail" aria-label="Story navigation">
-            <div class="rail-block">
-              <p class="story-label">{escape(story_kind)}</p>
-              <p>{escape(story.sequence_label)}</p>
-            </div>
-            <div class="rail-block">
-              <p class="story-label">Length</p>
-              <p>{story.character_count}字 / 約{story.reading_minutes}分</p>
-            </div>{toc_block}
-          </aside>
-          <div class="reader-main">
-            <header class="story-head">
-              <p class="story-number">{escape(story.sequence_label)}</p>
-              <h1 class="story-title">{escape(story.title)}</h1>
-              <p class="story-intro">{escape(story.description)}</p>
-            </header>
-            <div class="story-body">
-              {story.html_body}
-            </div>
-            <nav class="footer-nav" aria-label="Story links">
-              {"".join(footer_links)}
-            </nav>
-          </div>
-        </article>
-        """.strip(),
-        home_href=home_href,
-        archive_href=archive_href,
-    )
-
-
-def render_page(
-    page_title: str,
-    stylesheet_path: str,
-    main_content: str,
-    *,
-    home_href: str,
-    archive_href: str | None,
-) -> str:
-    archive_link = ""
-    if archive_href:
-        archive_link = f'<a href="{escape(archive_href)}">Archive</a>'
-
-    return f"""<!DOCTYPE html>
+    genre: str
+    stories: list
+    ongoing: bool
+
+    @property
+    def serial(self):
+        return len(self.stories) > 1 or self.ongoing
+
+    @property
+    def href(self):
+        return f'works/{self.slug}.html' if self.serial else f'stories/{self.stories[0].slug}.html'
+
+    @property
+    def minutes(self):
+        return sum(s.reading_minutes for s in self.stories)
+
+    @property
+    def status(self):
+        if self.ongoing:
+            return f'連載中 · {len(self.stories)}話まで公開'
+        return f'完結 · 全{len(self.stories)}編' if self.serial else '短編'
+
+
+def collect_works(stories):
+    catalog = json.loads((ROOT / 'content/catalog.json').read_text(encoding='utf-8'))
+    by_slug = {s.slug: s for s in stories}
+    works = []
+    for entry in manuscripts.make_index_entries(stories):
+        first = by_slug[entry.slug]
+        start = stories.index(first)
+        editorial = catalog.get(first.slug, {})
+        works.append(Work(editorial.get('slug', first.slug), entry.title,
+                          editorial.get('description', first.description),
+                          editorial.get('genre', '小説'), stories[start:start + entry.part_count],
+                          entry.series_kind == 'episode'))
+    return works
+
+
+def arrow():
+    return '<span aria-hidden="true">↗</span>'
+
+
+def chapter_title(story):
+    if story.series:
+        return story.title.removeprefix(story.series).strip()
+    match = manuscripts.SERIAL_TITLE_PATTERN.match(story.title)
+    return match.group(2) if match else story.title
+
+
+def cover_title(title):
+    main, separator, sub = title.partition('――')
+    return e(main) + (f'<span class="title-sub">{e(sub)}</span>' if separator else '')
+
+
+def continue_slot(prefix, work=''):
+    index = json.dumps(READING_INDEX, ensure_ascii=False).replace('<', '\\u003c')
+    return f'''<aside class="continue-slot" data-continue data-prefix="{prefix}" data-work-id="{e(work)}" hidden aria-label="前回の続き">
+      <span class="eyebrow">読みかけの一冊</span><a class="continue-link" href="{prefix}index.html"></a>
+      <span class="continue-note"></span></aside><script id="reading-index" type="application/json">{index}</script>'''
+
+
+def page(title, body, path, *, description=DESCRIPTION, reader=False):
+    prefix = '../' * (len(Path(path).parts) - 1)
+    canonical = PUBLIC_URL + path
+    full_title = 'Mini Novels — 小説を読む' if path == 'index.html' else f'{title} | Mini Novels'
+    return f'''<!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{escape(page_title)} | {escape(SITE_TITLE)}</title>
-    <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="{escape(stylesheet_path)}">
-  </head>
-  <body>
-    <a class="skip-link" href="#main">本文へ</a>
-    <div class="site-shell">
-      <header class="site-header">
-        <a class="brand" href="{escape(home_href)}">{escape(SITE_TITLE)}</a>
-        <nav class="site-nav" aria-label="Site navigation">
-          <a href="{escape(home_href)}">Current</a>
-          {archive_link}
-        </nav>
-      </header>
-      <main id="main">
-        {main_content}
-      </main>
-    </div>
-  </body>
+<head>
+  <meta charset="utf-8">
+{'<base href="' + PUBLIC_URL + '">' if path == '404.html' else ''}
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{e(full_title)}</title>
+  <meta name="description" content="{e(description)}">
+  <link rel="canonical" href="{canonical}">
+  <meta property="og:type" content="{'article' if reader else 'website'}">
+  <meta property="og:title" content="{e(title if path != 'index.html' else 'Mini Novels')}">
+  <meta property="og:description" content="{e(description)}">
+  <meta property="og:url" content="{canonical}">
+  <meta property="og:site_name" content="Mini Novels">
+  <meta property="og:locale" content="ja_JP">
+  <link rel="icon" type="image/svg+xml" href="{prefix}assets/favicon.svg">
+  <script src="{prefix}assets/theme.js?v={ASSET_VERSION}"></script>
+  <link rel="stylesheet" href="{prefix}assets/style.css?v={ASSET_VERSION}">
+  <script defer src="{prefix}assets/reader.js?v={ASSET_VERSION}"></script>
+</head>
+<body class="{'reading-page' if reader else 'collection-page'}" data-root="{prefix}">
+  <a class="skip-link" href="#main">本文へ移動</a>
+  <header class="site-header shell">
+    <a class="brand" href="{prefix}index.html" aria-label="Mini Novels ホーム">mini novels<span class="brand-dot" aria-hidden="true">.</span></a>
+    <nav aria-label="サイト内の移動"><a href="{prefix}index.html#library">作品一覧</a><a href="{prefix}about.html">この場所について</a></nav>
+  </header>
+  <main id="main" tabindex="-1">{body}</main>
+  <footer class="site-footer shell"><a class="footer-brand" href="{prefix}index.html">Mini Novels</a>
+    <div><a href="{prefix}archive/index.html">初期版アーカイブ</a><a href="{prefix}about.html">この場所について</a><a href="#main">ページの先頭へ ↑</a></div>
+  </footer>
+</body>
 </html>
-"""
+'''
 
 
-def load_story(path: Path) -> Story:
-    raw_text = path.read_text(encoding="utf-8")
-    metadata, body_text = parse_front_matter(raw_text)
-    fallback_title = metadata.get("title", path.stem)
-    title, sections, html_body, plain_text = parse_markdown(body_text, fallback_title)
-
-    description = metadata.get("description", make_excerpt(plain_text, limit=140))
-    excerpt = metadata.get("excerpt", make_excerpt(plain_text))
-    character_count = len(re.sub(r"\s+", "", plain_text))
-    episode = None
-    if metadata.get("episode"):
-        try:
-            episode = int(metadata["episode"])
-        except ValueError as exc:
-            raise ValueError(f"Invalid episode number in {path}: {metadata['episode']}") from exc
-
-    return Story(
-        slug=path.stem,
-        title=title,
-        description=description,
-        excerpt=excerpt,
-        source_name=path.name,
-        sequence_label=make_sequence_label(path.stem),
-        html_body=html_body,
-        sections=sections,
-        character_count=character_count,
-        reading_minutes=estimate_reading_minutes(character_count),
-        series=metadata.get("series", ""),
-        episode=episode,
-    )
+def work_row(work, number, prefix=''):
+    return f'''<li class="work-row" data-work data-search="{e(work.title + ' ' + work.description + ' ' + work.genre)}" data-kind="{'serial' if work.serial else 'short'}">
+      <span class="work-number" aria-hidden="true">{number:02d}</span>
+      <div class="work-detail"><div class="work-meta"><span>{e(work.genre)}</span><span>{e(work.status)}</span></div>
+      <h3><a href="{prefix}{work.href}">{e(work.title)} {arrow()}</a></h3>
+      <p>{e(work.description)}</p></div><span class="work-duration">約{work.minutes}分{'<small>公開分を通して</small>' if work.ongoing else ''}</span></li>'''
 
 
-def ensure_output_dirs() -> None:
-    SITE_DIR.mkdir(exist_ok=True)
-    SITE_STORIES_DIR.mkdir(exist_ok=True)
-    SITE_ARCHIVE_DIR.mkdir(exist_ok=True)
-    SITE_ARCHIVE_STORIES_DIR.mkdir(exist_ok=True)
-    SITE_ASSETS_DIR.mkdir(exist_ok=True)
+def opening_quote(story):
+    paragraphs = re.findall(r'<p(?: [^>]*)?>(.*?)</p>', story.html_body, re.S)
+    return '<p>' + '</p><p>'.join(paragraphs[:2]) + '</p>'
 
 
-def clear_generated_story_pages() -> None:
-    for path in SITE_STORIES_DIR.glob("*.html"):
-        path.unlink()
-    for path in SITE_ARCHIVE_STORIES_DIR.glob("*.html"):
-        path.unlink()
+def home(works):
+    featured = works[-1] if works else None
+    if not featured:
+        return page('Mini Novels', '<div class="shell page-intro"><h1>Mini Novels</h1><p>作品の公開を準備しています。</p></div>', 'index.html')
+    first, latest = featured.stories[0], featured.stories[-1]
+    short_count = sum(not w.serial for w in works)
+    rows = '\n'.join(work_row(w, i) for i, w in enumerate(reversed(works), 1))
+    latest_link = f'''<a class="latest-link" href="stories/{latest.slug}.html"><span>最新話 · 約{latest.reading_minutes}分</span><strong>{e(chapter_title(latest))}</strong>{arrow()}</a>''' if featured.ongoing else ''
+    return page('Mini Novels', f'''
+    <div class="shell">{continue_slot('')}
+      <section class="home-feature" aria-labelledby="featured-title">
+        <div class="feature-main">
+          <div class="feature-caption"><span class="eyebrow">{e(featured.genre)} / {e(featured.status)}</span><span class="feature-index" aria-hidden="true">01 —</span></div>
+          <h1 id="featured-title">{cover_title(featured.title)}</h1>
+          <p class="feature-description">{e(featured.description)}</p>
+          <div class="feature-actions"><a class="button primary" href="stories/{first.slug}.html">{'第一話から読む' if featured.ongoing else 'はじめから読む'} <span aria-hidden="true">→</span></a>
+          <a class="text-link" href="{featured.href}">作品の目次 {arrow()}</a></div>
+        </div>
+        <aside class="feature-side"><div class="opening"><span class="eyebrow">物語のはじまり</span>
+          <blockquote>{opening_quote(first)}</blockquote><span class="opening-source">{e(chapter_title(first))} より</span></div>{latest_link}</aside>
+      </section>
+      <section class="library" id="library" aria-labelledby="library-title">
+        <div class="section-heading"><div><span class="eyebrow">THE COLLECTION</span><h2 id="library-title">物語を選ぶ<span class="count">{len(works):02d}</span></h2></div><p>連載・中編 {len(works)-short_count}作品 / 短編 {short_count}作品</p></div>
+        <div class="library-tools js-only"><div class="filter-group" role="group" aria-label="作品の種類"><button data-filter="all" aria-pressed="true">すべて</button><button data-filter="serial" aria-pressed="false">連載・中編</button><button data-filter="short" aria-pressed="false">短編</button></div>
+          <label class="search-label"><span aria-hidden="true">⌕</span><span class="sr-only">作品名や言葉で探す</span><input type="search" id="library-search" placeholder="作品名や言葉で探す" autocomplete="off"></label></div>
+        <p class="search-status sr-only" role="status" aria-live="polite"></p>
+        <ol class="work-list">{rows}</ol>
+        <p class="empty-search" hidden>見つかりませんでした。別の言葉で探してみてください。<button class="text-link" data-reset-search>検索をリセット</button></p>
+      </section>
+      <aside class="home-colophon"><span class="eyebrow">MINI NOVELS</span><p>ひとつずつ書き、読み、育てていく。<br>短編と、続いていく物語のための場所です。</p><a class="text-link" href="about.html">この場所について {arrow()}</a></aside>
+    </div>''', 'index.html')
 
 
-def build_site() -> None:
-    ensure_output_dirs()
-    clear_generated_story_pages()
-
-    story_paths = sorted(STORIES_DIR.glob("*.md"))
-    stories = [load_story(path) for path in story_paths]
-    archive_story_paths = sorted(ARCHIVE_DIR.glob("*.md"))
-    archived_stories = [load_story(path) for path in archive_story_paths]
-    archived_by_slug = {story.slug: story for story in archived_stories}
-    current_by_slug = {story.slug: story for story in stories}
-
-    (SITE_DIR / ".nojekyll").write_text("", encoding="utf-8")
-    (SITE_ASSETS_DIR / "style.css").write_text(STYLE_CSS, encoding="utf-8")
-    (SITE_DIR / "index.html").write_text(
-        render_index_page(stories, archived_stories),
-        encoding="utf-8",
-    )
-
-    if archived_stories:
-        (SITE_ARCHIVE_DIR / "index.html").write_text(
-            render_archive_index_page(archived_stories),
-            encoding="utf-8",
-        )
-
-    for index, story in enumerate(stories):
-        output_path = SITE_STORIES_DIR / f"{story.slug}.html"
-        archived_story = archived_by_slug.get(story.slug)
-        output_path.write_text(
-            render_story_page(
-                stories,
-                index,
-                stylesheet_path="../assets/style.css",
-                home_href="../index.html",
-                archive_href="../archive/index.html" if archived_stories else None,
-                story_kind="Current",
-                back_label="現行目次へ",
-                cross_edition_story=archived_story,
-                cross_edition_href=f"../archive/stories/{story.slug}.html" if archived_story else None,
-            ),
-            encoding="utf-8",
-        )
-
-    for index, story in enumerate(archived_stories):
-        output_path = SITE_ARCHIVE_STORIES_DIR / f"{story.slug}.html"
-        current_story = current_by_slug.get(story.slug)
-        output_path.write_text(
-            render_story_page(
-                archived_stories,
-                index,
-                stylesheet_path="../../assets/style.css",
-                home_href="../../index.html",
-                archive_href="../index.html",
-                story_kind="Initial",
-                back_label="初期版目次へ",
-                back_href="../index.html",
-                cross_edition_story=current_story,
-                cross_edition_href=f"../../stories/{story.slug}.html" if current_story else None,
-            ),
-            encoding="utf-8",
-        )
-
-    print(
-        f"Built {len(stories)} current stories and {len(archived_stories)} archived stories into {SITE_DIR}"
-    )
+def work_page(work):
+    first, latest = work.stories[0], work.stories[-1]
+    rows = '\n'.join(f'''<li><a href="../stories/{s.slug}.html"><span class="chapter-number">{i:02d}</span><span class="chapter-name">{e(chapter_title(s))}</span><span class="chapter-time">約{s.reading_minutes}分 <span aria-hidden="true">→</span></span></a></li>''' for i, s in enumerate(work.stories, 1))
+    latest_link = f'<a class="text-link" href="../stories/{latest.slug}.html">最新話を読む {arrow()}</a>' if work.ongoing else ''
+    return page(work.title, f'''<div class="shell work-page">
+      <a class="breadcrumb" href="../index.html#library">← 作品一覧</a>{continue_slot('../', work.slug)}
+      <div class="book-layout"><header class="book-head"><span class="eyebrow">{e(work.genre)} / {e(work.status)}</span>
+      <h1>{cover_title(work.title)}</h1><p class="book-description">{e(work.description)}</p>
+      <p class="muted">{'公開分' if work.ongoing else '全編'} 約{work.minutes}分</p>
+      <div class="feature-actions"><a class="button primary" href="../stories/{first.slug}.html">はじめから読む <span aria-hidden="true">→</span></a>{latest_link}</div></header>
+      <section class="chapter-section" aria-labelledby="chapter-heading"><div class="section-heading"><h2 id="chapter-heading">目次</h2><span class="eyebrow">{len(work.stories):02d} {'EPISODES' if work.ongoing else 'PARTS'}</span></div>
+      <ol class="chapter-list">{rows}</ol><p class="series-note">{'物語は続いています。' if work.ongoing else 'この作品は完結しています。'}</p></section></div>
+      </div>''', f'works/{work.slug}.html', description=work.description)
 
 
-if __name__ == "__main__":
+def reading_dialogs(story, work):
+    sections = ''.join(f'<li><a href="#{s.id}" data-close-dialog>{e(s.title)}</a></li>' for s in story.sections)
+    chapters = ''
+    if work and work.serial:
+        links = []
+        for s in work.stories:
+            current = ' aria-current="page"' if s.slug == story.slug else ''
+            links.append(f'<li><a href="{s.slug}.html"{current}>{e(chapter_title(s))}</a></li>')
+        chapters = '<h3>作品の目次</h3><ol class="dialog-chapters">' + ''.join(links) + '</ol>'
+    return f'''
+    <dialog id="contents-dialog" aria-labelledby="contents-heading"><div class="dialog-heading"><h2 id="contents-heading">目次</h2><button class="close-dialog" data-close-dialog aria-label="目次を閉じる">×</button></div>
+    <nav aria-label="読書の目次"><h3>この{'編' if work and work.serial and not work.ongoing else '話'}の中で</h3><ol class="dialog-sections"><li><a href="#main" data-close-dialog>はじめへ</a></li>{sections}</ol>{chapters}</nav></dialog>
+    <dialog id="settings-dialog" aria-labelledby="settings-heading"><div class="dialog-heading"><h2 id="settings-heading">読みやすさ</h2><button class="close-dialog" data-close-dialog aria-label="設定を閉じる">×</button></div>
+    <fieldset><legend>文字の大きさ</legend><div class="setting-options" data-setting="size"><button data-value="small">小</button><button data-value="medium">標準</button><button data-value="large">大</button><button data-value="xlarge">特大</button></div></fieldset>
+    <fieldset><legend>書体</legend><div class="setting-options" data-setting="font"><button data-value="serif" class="serif">明朝</button><button data-value="sans">ゴシック</button></div></fieldset>
+    <fieldset><legend>背景</legend><div class="setting-options theme-options" data-setting="theme"><button data-value="light">白</button><button data-value="paper">生成り</button><button data-value="night">夜</button></div></fieldset>
+    <p class="settings-note" id="storage-note">設定と読んだ位置は、このブラウザにだけ保存します。</p>
+    <button class="text-link" id="reset-settings">標準の表示に戻す</button></dialog>'''
+
+
+def add_paragraph_anchors(body):
+    count = 0
+    def replace(match):
+        nonlocal count
+        count += 1
+        return f'<{match.group(1)} id="p-{count}"{match.group(2)}>'
+    return re.sub(r'<(p|blockquote|ul|ol)([^>]*)>', replace, body)
+
+
+def story_page(story, work, all_works, *, archive=False, counterpart=False):
+    prefix = '../../' if archive else '../'
+    path = f"{'archive/' if archive else ''}stories/{story.slug}.html"
+    within = work.stories.index(story) if work else 0
+    previous = work.stories[within - 1] if work and within else None
+    next_story = work.stories[within + 1] if work and within + 1 < len(work.stories) else None
+    title = chapter_title(story) if work and work.serial else story.title
+    book_link = f'<a href="../{work.href}">{e(work.title)}</a>' if work and work.serial else '<span>短編小説</span>'
+    if archive:
+        book_link = '<a href="../index.html">初期版アーカイブ</a>'
+    body = add_paragraph_anchors(story.html_body)
+    if counterpart:
+        counterpart_href = f'../../stories/{story.slug}.html' if archive else f'../archive/stories/{story.slug}.html'
+        edition = f'<p class="edition-link"><a href="{counterpart_href}">{"現行版を読む" if archive else "初期版を読む"} {arrow()}</a></p>'
+    else:
+        edition = ''
+    if next_story:
+        onward = f'<a class="next-story" href="{next_story.slug}.html"><span class="eyebrow">続きへ</span><strong>{e(chapter_title(next_story))}</strong><span aria-hidden="true">→</span></a>'
+    elif work and work.ongoing:
+        onward = f'<p class="end-note">公開されている話は、ここまで。<br>続きは、作品の目次から。</p><a class="button" href="../{work.href}">作品の目次へ <span aria-hidden="true">→</span></a>'
+    else:
+        onward = '<p class="end-mark" aria-label="おわり">了</p>'
+        if not archive and all_works:
+            related = {'001': '002', '005': '006', '006': '005', '010': '011', '011': '012'}
+            target = related.get(work.stories[0].sequence_label) if work else None
+            recommended = next((w for w in all_works if w.stories[0].sequence_label == target), None)
+            recommended = recommended or next((w for w in reversed(all_works) if w != work), None)
+            if recommended:
+                onward += f'<a class="next-story recommendation" href="{prefix}{recommended.href}"><span class="eyebrow">もう一冊、読むなら</span><strong>{e(recommended.title)}</strong><span aria-hidden="true">→</span></a>'
+    previous_link = f'<a href="{previous.slug}.html">← {e(chapter_title(previous))}</a>' if previous else ''
+    toc_link = f'<a href="../{work.href}">作品の目次</a>' if work and work.serial else f'<a href="{prefix}index.html#library">作品一覧へ</a>'
+    if archive:
+        toc_link = '<a href="../index.html">初期版の目次へ</a>'
+    initial_notice = '<p class="archive-notice">このページは、改稿前の初期版です。</p>' if archive else ''
+    metadata = {'id': ('archive/' if archive else '') + story.slug,
+                'title': story.title, 'url': path, 'minutes': story.reading_minutes,
+                'next': {'url': f'stories/{next_story.slug}.html', 'title': next_story.title} if next_story else None,
+                'work': work.slug if work else None}
+    data = json.dumps(metadata, ensure_ascii=False).replace('<', '\\u003c')
+    return page(story.title, f'''
+      <article class="reader" data-story="{e(story.slug)}">
+        <header class="story-head"><div class="story-context">{book_link}</div>{initial_notice}
+          <h1>{e(title)}</h1><p class="story-meta">約{story.reading_minutes}分<span aria-hidden="true"> / </span>{story.character_count:,}字</p>
+          <div class="resume-notice" hidden><span>前回読んだ位置が保存されています。</span><button id="resume-reading">続きから読む ↓</button></div>
+        </header>
+        <div class="story-body" id="story-body">{body}</div>
+        <footer class="story-end" id="story-end">{onward}<nav class="end-navigation" aria-label="作品間の移動">{previous_link}{toc_link}</nav>{edition}</footer>
+      </article>
+      <div class="reader-controls js-only" role="group" aria-label="読書ツール">
+        <button data-dialog="contents-dialog"><span aria-hidden="true">☰</span> 目次</button><div class="reading-progress"><span class="sr-only">読書の進み具合</span><span id="progress-label">0%</span><div class="progress-track" aria-hidden="true"><span id="progress-fill"></span></div></div><button data-dialog="settings-dialog"><span class="type-icon" aria-hidden="true">あ</span> 表示</button>
+      </div>{reading_dialogs(story, work)}
+      <script type="application/json" id="story-data">{data}</script>''', path, description=work.description if work else story.description, reader=True)
+
+
+def archive_page(stories):
+    rows = ''.join(f'<li class="archive-row"><span>{e(s.sequence_label)}</span><a href="stories/{s.slug}.html">{e(s.title)} {arrow()}</a><span>約{s.reading_minutes}分</span></li>' for s in stories)
+    return page('初期版アーカイブ', f'''<div class="shell narrow-page"><a class="breadcrumb" href="../index.html">← ホーム</a><header class="page-intro"><span class="eyebrow">INITIAL EDITION</span><h1>初期版アーカイブ</h1><p>同じ題から、違う物語へ。<br>改稿前の作品を、そのまま残しています。</p></header><ol class="archive-list">{rows}</ol></div>''', 'archive/index.html', description='Mini Novelsの改稿前の作品を保存した初期版アーカイブです。')
+
+
+def about_page():
+    return page('この場所について', '''<div class="shell about-page"><a class="breadcrumb" href="index.html">← ホーム</a>
+      <header class="page-intro"><span class="eyebrow">ABOUT MINI NOVELS</span><h1>ひとつずつ、<br>物語を育てる。</h1></header>
+      <div class="about-body"><p>Mini Novelsは、短編小説と連載小説を公開する、小さな作品集です。</p>
+      <p>一人の人間が問いや方向を差し出し、AIが書き、対話を重ねながら次の作品へ進む。そうした協働の中から生まれた小説を、ここに置いています。</p>
+      <p>一作で読み終える短編も、登場人物と長く過ごす連載もあります。気になる題を、ひとつ開いてみてください。</p>
+      <h2>読むためのこと</h2><p>読書画面の「表示」から、文字の大きさ、書体、背景色を変えられます。途中で閉じた作品は、次に訪れたときに読んでいた位置から再開できます。</p>
+      <p>設定と読書位置は、お使いのブラウザの中だけに保存します。会員登録はありません。別の端末との同期は行いません。ブラウザのデータを消すと、保存した位置も消えます。</p>
+      <p>本文はJavaScriptを無効にしていても読めます。日本語の書体はGoogle Fontsから読み込み、接続できない場合は端末の書体で表示します。</p>
+      <h2>初期版について</h2><p>改稿前の小説は、<a href="archive/index.html">初期版アーカイブ</a>に残しています。同じ題でも、現在の作品とは内容が異なります。</p>
+      <a class="button primary" href="index.html#library">作品を選ぶ <span aria-hidden="true">→</span></a></div></div>''', 'about.html')
+
+
+def build_site():
+    global ASSET_VERSION, READING_INDEX
+    importlib.reload(manuscripts)
+    asset_dir = ROOT / 'web'
+    ASSET_VERSION = sha256(b''.join(p.read_bytes() for p in sorted(asset_dir.glob('*')) if p.is_file())).hexdigest()[:10]
+    stories = [manuscripts.load_story(p) for p in sorted((ROOT / 'stories').glob('*.md'))]
+    archived = [manuscripts.load_story(p) for p in sorted((ROOT / 'archive/initial').glob('*.md'))]
+    works = collect_works(stories)
+    READING_INDEX = {}
+    for work in works:
+        for i, story in enumerate(work.stories):
+            next_story = work.stories[i + 1] if i + 1 < len(work.stories) else None
+            READING_INDEX[f'stories/{story.slug}.html'] = {
+                'next': {'url': f'stories/{next_story.slug}.html', 'title': next_story.title} if next_story else None}
+    for story in archived:
+        READING_INDEX[f'archive/stories/{story.slug}.html'] = {'next': None}
+    pages = {'index.html': home(works), 'about.html': about_page(), 'archive/index.html': archive_page(archived)}
+    archived_slugs = {s.slug for s in archived}
+    current_slugs = {s.slug for s in stories}
+    for work in works:
+        if work.serial:
+            pages[work.href] = work_page(work)
+        for story in work.stories:
+            pages[f'stories/{story.slug}.html'] = story_page(story, work, works, counterpart=story.slug in archived_slugs)
+    for story in archived:
+        pages[f'archive/stories/{story.slug}.html'] = story_page(story, None, works, archive=True, counterpart=story.slug in current_slugs)
+    pages['404.html'] = page('ページが見つかりません', '<div class="shell page-intro"><h1>ページが見つかりません。</h1><p>作品の一覧から、読みたい小説をお探しください。</p><a class="button primary" href="' + PUBLIC_URL + '">作品一覧へ →</a></div>', '404.html')
+    # Prepare all page strings before replacing existing generated pages.
+    SITE.mkdir(exist_ok=True)
+    for relative, html in pages.items():
+        output = SITE / relative
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(html, encoding='utf-8')
+    for old in SITE.rglob('*.html'):
+        if old.relative_to(SITE).as_posix() not in pages:
+            old.unlink()
+    shutil.copytree(asset_dir, SITE / 'assets', dirs_exist_ok=True)
+    (SITE / '.nojekyll').write_text('', encoding='utf-8')
+    sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ''.join(f'<url><loc>{PUBLIC_URL}{p}</loc></url>' for p in pages if p != '404.html') + '</urlset>\n'
+    (SITE / 'sitemap.xml').write_text(sitemap, encoding='utf-8')
+    print(f'Built {len(works)} works, {len(stories)} current chapters, {len(archived)} initial editions; {len(pages)} pages.')
+
+
+if __name__ == '__main__':
     build_site()

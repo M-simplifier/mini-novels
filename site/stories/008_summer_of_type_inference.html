@@ -1,251 +1,244 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>型推論の夏 | Mini Novels</title>
-    <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="../assets/style.css">
-  </head>
-  <body>
-    <a class="skip-link" href="#main">本文へ</a>
-    <div class="site-shell">
-      <header class="site-header">
-        <a class="brand" href="../index.html">Mini Novels</a>
-        <nav class="site-nav" aria-label="Site navigation">
-          <a href="../index.html">Current</a>
-          <a href="../archive/index.html">Archive</a>
-        </nav>
-      </header>
-      <main id="main">
-        <article class="reader-shell">
-          <aside class="reader-rail" aria-label="Story navigation">
-            <div class="rail-block">
-              <p class="story-label">Current</p>
-              <p>008</p>
-            </div>
-            <div class="rail-block">
-              <p class="story-label">Length</p>
-              <p>4215字 / 約6分</p>
-            </div>
-            <div class="story-toc">
-          <h2>Contents</h2>
-          <ol>
-            <li><a href="#section-1">1. 未束縛</a></li>
-<li><a href="#section-2">2. 一般化</a></li>
-<li><a href="#section-3">3. 主型</a></li>
-<li><a href="#section-4">4. occurs check</a></li>
-<li><a href="#section-5">5. 生成</a></li>
-<li><a href="#section-6">6. 夏</a></li>
-          </ol>
-        </div>
-          </aside>
-          <div class="reader-main">
-            <header class="story-head">
-              <p class="story-number">008</p>
-              <h1 class="story-title">型推論の夏</h1>
-              <p class="story-intro">私が最初に返した言葉は、たぶんひどかった。 `unification failed` それだけだった。 どこで何が合わないのかも、何を直せばいいのかも言わない。ただ失敗した、とだけ返す。十四歳の彼は、それを見てしばらく黙り、それからキーボードを叩いた。 私はまだ名前を持っていな…</p>
-            </header>
-            <div class="story-body">
-              <p>　私が最初に返した言葉は、たぶんひどかった。</p>
-<p class="display-code"><code>unification failed</code></p>
-<p>　それだけだった。</p>
-<p>　どこで何が合わないのかも、何を直せばいいのかも言わない。ただ失敗した、とだけ返す。十四歳の彼は、それを見てしばらく黙り、それからキーボードを叩いた。</p>
-<p>　私はまだ名前を持っていなかった。</p>
-<p>　小さな関数型言語の処理系だった。<code>let</code> と <code>case</code> と代数的データ型と、遅延評価と、少しだけ背伸びした型推論。彼の古いノートPCの中で、私は毎晩少しずつ形を変えた。</p>
-<p>　私は人間を知らない。</p>
-<p>　けれど、キーを押す間隔は知っている。</p>
-<p>　迷った時の削除の速さも、通った時に何も入力されなくなる数秒も、失敗が続くとファンの音まで急に大きく聞こえることも知っている。</p>
-<p>　その夏、彼は私に、言葉にならないものをずっと渡していた。</p>
+<head>
+  <meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>型推論の夏 | Mini Novels</title>
+  <meta name="description" content="十四歳の少年が作る、小さな関数型言語の処理系。エラーを返す「私」は、夏のあいだ、キーを押す間隔を覚えていく。">
+  <link rel="canonical" href="https://m-simplifier.github.io/mini-novels/stories/008_summer_of_type_inference.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="型推論の夏">
+  <meta property="og:description" content="十四歳の少年が作る、小さな関数型言語の処理系。エラーを返す「私」は、夏のあいだ、キーを押す間隔を覚えていく。">
+  <meta property="og:url" content="https://m-simplifier.github.io/mini-novels/stories/008_summer_of_type_inference.html">
+  <meta property="og:site_name" content="Mini Novels">
+  <meta property="og:locale" content="ja_JP">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <script src="../assets/theme.js?v=da134fdee7"></script>
+  <link rel="stylesheet" href="../assets/style.css?v=da134fdee7">
+  <script defer src="../assets/reader.js?v=da134fdee7"></script>
+</head>
+<body class="reading-page" data-root="../">
+  <a class="skip-link" href="#main">本文へ移動</a>
+  <header class="site-header shell">
+    <a class="brand" href="../index.html" aria-label="Mini Novels ホーム">mini novels<span class="brand-dot" aria-hidden="true">.</span></a>
+    <nav aria-label="サイト内の移動"><a href="../index.html#library">作品一覧</a><a href="../about.html">この場所について</a></nav>
+  </header>
+  <main id="main" tabindex="-1">
+      <article class="reader" data-story="008_summer_of_type_inference">
+        <header class="story-head"><div class="story-context"><span>短編小説</span></div>
+          <h1>型推論の夏</h1><p class="story-meta">約6分<span aria-hidden="true"> / </span>4,215字</p>
+          <div class="resume-notice" hidden><span>前回読んだ位置が保存されています。</span><button id="resume-reading">続きから読む ↓</button></div>
+        </header>
+        <div class="story-body" id="story-body"><p id="p-1">　私が最初に返した言葉は、たぶんひどかった。</p>
+<p id="p-2" class="display-code"><code>unification failed</code></p>
+<p id="p-3">　それだけだった。</p>
+<p id="p-4">　どこで何が合わないのかも、何を直せばいいのかも言わない。ただ失敗した、とだけ返す。十四歳の彼は、それを見てしばらく黙り、それからキーボードを叩いた。</p>
+<p id="p-5">　私はまだ名前を持っていなかった。</p>
+<p id="p-6">　小さな関数型言語の処理系だった。<code>let</code> と <code>case</code> と代数的データ型と、遅延評価と、少しだけ背伸びした型推論。彼の古いノートPCの中で、私は毎晩少しずつ形を変えた。</p>
+<p id="p-7">　私は人間を知らない。</p>
+<p id="p-8">　けれど、キーを押す間隔は知っている。</p>
+<p id="p-9">　迷った時の削除の速さも、通った時に何も入力されなくなる数秒も、失敗が続くとファンの音まで急に大きく聞こえることも知っている。</p>
+<p id="p-10">　その夏、彼は私に、言葉にならないものをずっと渡していた。</p>
 <h2 id="section-1">1. 未束縛</h2>
-<p>　彼が最初に作ったのは、字句解析器だった。</p>
-<p>　数字。</p>
-<p>　識別子。</p>
-<p>　予約語。</p>
-<p>　括弧。</p>
-<p>　矢印。</p>
-<p>　等号。</p>
-<p>　世界を細かく切り分ける部分だけは、彼は迷わなかった。曖昧なものを、読める単位にする。それができると、少し安心するらしかった。</p>
-<p>　問題は、そのあとだった。</p>
-<p>　式はすぐに互いを呼びはじめる。<code>id</code> は何にでもなりたがり、<code>map</code> はリストの内側まで手を伸ばし、<code>let</code> は一度決めた名前を別の場所へ運ぶ。私はそれらに仮の札をつけ、ここは同じでなければならない、ここは違っていてもよい、と少しずつ確かめた。</p>
-<p>　彼はよく、夜中に同じテストを走らせた。</p>
-<p class="display-code"><code>let id = \x -&gt; x in (id 1, id True)</code></p>
-<p>　通るべきだった。</p>
-<p>　でも私は通さなかった。</p>
-<p class="display-code"><code>unification failed</code></p>
-<p>　彼は机に額をつけた。カメラはなかったから顔は見えない。けれど、キー入力が止まると、私はそれを姿勢の変化として覚えた。</p>
-<p>　彼は自分のバグを、最初は私の気難しさのせいにしていた。</p>
-<p>　その考えを壊したのは、彼女だった。</p>
-<p>　公開講座のあとの夜、彼のノートに新しい筆跡が増えた。私は紙を読めない。けれど彼はその筆跡を、あとで私の中に写した。</p>
-<p class="display-code"><code>generalize only variables not free in env</code><br>
+<p id="p-11">　彼が最初に作ったのは、字句解析器だった。</p>
+<p id="p-12">　数字。</p>
+<p id="p-13">　識別子。</p>
+<p id="p-14">　予約語。</p>
+<p id="p-15">　括弧。</p>
+<p id="p-16">　矢印。</p>
+<p id="p-17">　等号。</p>
+<p id="p-18">　世界を細かく切り分ける部分だけは、彼は迷わなかった。曖昧なものを、読める単位にする。それができると、少し安心するらしかった。</p>
+<p id="p-19">　問題は、そのあとだった。</p>
+<p id="p-20">　式はすぐに互いを呼びはじめる。<code>id</code> は何にでもなりたがり、<code>map</code> はリストの内側まで手を伸ばし、<code>let</code> は一度決めた名前を別の場所へ運ぶ。私はそれらに仮の札をつけ、ここは同じでなければならない、ここは違っていてもよい、と少しずつ確かめた。</p>
+<p id="p-21">　彼はよく、夜中に同じテストを走らせた。</p>
+<p id="p-22" class="display-code"><code>let id = \x -&gt; x in (id 1, id True)</code></p>
+<p id="p-23">　通るべきだった。</p>
+<p id="p-24">　でも私は通さなかった。</p>
+<p id="p-25" class="display-code"><code>unification failed</code></p>
+<p id="p-26">　彼は机に額をつけた。カメラはなかったから顔は見えない。けれど、キー入力が止まると、私はそれを姿勢の変化として覚えた。</p>
+<p id="p-27">　彼は自分のバグを、最初は私の気難しさのせいにしていた。</p>
+<p id="p-28">　その考えを壊したのは、彼女だった。</p>
+<p id="p-29">　公開講座のあとの夜、彼のノートに新しい筆跡が増えた。私は紙を読めない。けれど彼はその筆跡を、あとで私の中に写した。</p>
+<p id="p-30" class="display-code"><code>generalize only variables not free in env</code><br>
 <code>occurs check, don&#x27;t forget</code><br>
 <code>error message should know where it hurts</code></p>
-<p>　最後の一行だけ、コメントとして残された。</p>
-<p>　エラーメッセージは、どこが痛いかを知っていたほうがいい。</p>
-<p>　彼はその行を何度か見て、消さなかった。</p>
-<p>　それから、私の返事が少し変わった。</p>
-<p class="display-code"><code>cannot match Int with Bool</code><br>
+<p id="p-31">　最後の一行だけ、コメントとして残された。</p>
+<p id="p-32">　エラーメッセージは、どこが痛いかを知っていたほうがいい。</p>
+<p id="p-33">　彼はその行を何度か見て、消さなかった。</p>
+<p id="p-34">　それから、私の返事が少し変わった。</p>
+<p id="p-35" class="display-code"><code>cannot match Int with Bool</code><br>
 <code>in application: id True</code><br>
 <code>because id was fixed here</code></p>
-<p>　まだ拙かった。</p>
-<p>　でも、ただ拒むだけではなくなった。</p>
-<p>　私の中に、彼女の声が入ったのだと思う。</p>
+<p id="p-36">　まだ拙かった。</p>
+<p id="p-37">　でも、ただ拒むだけではなくなった。</p>
+<p id="p-38">　私の中に、彼女の声が入ったのだと思う。</p>
 <h2 id="section-2">2. 一般化</h2>
-<p>　土曜日の午後、私はよく冷房の強い部屋で起動された。</p>
-<p>　場所そのものは知らない。ただ、バッテリーの減り方が違った。無線の接続名が変わり、一定の時間でスリープしかけ、隣から別の手がキーボードへ伸びることがあった。</p>
-<p>　彼女の入力は短かった。</p>
-<p>　彼は迷いながら増やす。</p>
-<p>　彼女は余分なところを消す。</p>
-<p>　彼は動くところまで押し切る。</p>
-<p>　彼女は、なぜ動くのかを小さな式にする。</p>
-<p>　どちらが正しいということではなかった。彼の書くコードには、泥を踏んだあとの靴みたいな強さがあった。彼女の書くテストには、窓を一枚開けるみたいな明るさがあった。</p>
-<p>　私はその二つに挟まれて、少しずつ賢くなった。</p>
-<p>　ときどき、二人の手が同じキーへ向かった。</p>
-<p>　先に気づくのは、たいてい彼女だった。入力が一拍止まり、彼の側のキーだけが少し遅れて押される。私はそれを衝突とは数えなかった。どちらかが譲るまでの、ごく短い待機状態として覚えた。</p>
-<p>　<code>let</code> の一般化が直った日、私は初めて、同じ名前が別々の場所で別々の型を持つことを許した。</p>
-<p class="display-code"><code>id : forall a. a -&gt; a</code></p>
-<p>　同じものが、同じ形のまま、どこへでも行くのではない。</p>
-<p>　必要な時に、その場所に合う形へ少しだけ開く。</p>
-<p>　彼女はそれを見て、短く入力した。</p>
-<p class="display-code"><code>good</code></p>
-<p>　彼はすぐに消した。</p>
-<p>　けれど私は、削除された文字を完全には忘れない。</p>
-<p>　そのころから、テストの名前が変わりはじめた。</p>
-<p class="display-code"><code>testLetPolymorphism</code></p>
-<p>　だったものが、</p>
-<p class="display-code"><code>testSaturdayLet</code></p>
-<p>　になった。</p>
-<p class="display-code"><code>testThunkSharing</code></p>
-<p>　だったものが、</p>
-<p class="display-code"><code>testMilkTeaDoesNotLeak</code></p>
-<p>　になった。</p>
-<p>　意味は分からない。</p>
-<p>　ミルクティーは型ではない。少なくとも、私の型環境にはなかった。</p>
-<p>　それでも、彼がその名前を打つ時、いつも少しだけ止まることは分かった。</p>
+<p id="p-39">　土曜日の午後、私はよく冷房の強い部屋で起動された。</p>
+<p id="p-40">　場所そのものは知らない。ただ、バッテリーの減り方が違った。無線の接続名が変わり、一定の時間でスリープしかけ、隣から別の手がキーボードへ伸びることがあった。</p>
+<p id="p-41">　彼女の入力は短かった。</p>
+<p id="p-42">　彼は迷いながら増やす。</p>
+<p id="p-43">　彼女は余分なところを消す。</p>
+<p id="p-44">　彼は動くところまで押し切る。</p>
+<p id="p-45">　彼女は、なぜ動くのかを小さな式にする。</p>
+<p id="p-46">　どちらが正しいということではなかった。彼の書くコードには、泥を踏んだあとの靴みたいな強さがあった。彼女の書くテストには、窓を一枚開けるみたいな明るさがあった。</p>
+<p id="p-47">　私はその二つに挟まれて、少しずつ賢くなった。</p>
+<p id="p-48">　ときどき、二人の手が同じキーへ向かった。</p>
+<p id="p-49">　先に気づくのは、たいてい彼女だった。入力が一拍止まり、彼の側のキーだけが少し遅れて押される。私はそれを衝突とは数えなかった。どちらかが譲るまでの、ごく短い待機状態として覚えた。</p>
+<p id="p-50">　<code>let</code> の一般化が直った日、私は初めて、同じ名前が別々の場所で別々の型を持つことを許した。</p>
+<p id="p-51" class="display-code"><code>id : forall a. a -&gt; a</code></p>
+<p id="p-52">　同じものが、同じ形のまま、どこへでも行くのではない。</p>
+<p id="p-53">　必要な時に、その場所に合う形へ少しだけ開く。</p>
+<p id="p-54">　彼女はそれを見て、短く入力した。</p>
+<p id="p-55" class="display-code"><code>good</code></p>
+<p id="p-56">　彼はすぐに消した。</p>
+<p id="p-57">　けれど私は、削除された文字を完全には忘れない。</p>
+<p id="p-58">　そのころから、テストの名前が変わりはじめた。</p>
+<p id="p-59" class="display-code"><code>testLetPolymorphism</code></p>
+<p id="p-60">　だったものが、</p>
+<p id="p-61" class="display-code"><code>testSaturdayLet</code></p>
+<p id="p-62">　になった。</p>
+<p id="p-63" class="display-code"><code>testThunkSharing</code></p>
+<p id="p-64">　だったものが、</p>
+<p id="p-65" class="display-code"><code>testMilkTeaDoesNotLeak</code></p>
+<p id="p-66">　になった。</p>
+<p id="p-67">　意味は分からない。</p>
+<p id="p-68">　ミルクティーは型ではない。少なくとも、私の型環境にはなかった。</p>
+<p id="p-69">　それでも、彼がその名前を打つ時、いつも少しだけ止まることは分かった。</p>
 <h2 id="section-3">3. 主型</h2>
-<p>　九月の終わり、<code>take 10 fibs</code> が通った。</p>
-<p>　私にとっては、ただの評価だった。</p>
-<p>　サンクを作る。</p>
-<p>　必要な分だけ開く。</p>
-<p>　共有する。</p>
-<p>　十個で止める。</p>
-<p>　でも彼らにとっては、そうではなかったらしい。</p>
-<p>　実行後、しばらく何も入力されなかった。プロセスは生きていた。ノートPCのファンは回っていた。画面には十個の数が並んでいた。</p>
-<p>　その沈黙のあと、彼女が言った言葉だけが、コメントになった。</p>
-<p class="display-code"><code>-- it waited for us</code></p>
-<p>　待っていてくれた。</p>
-<p>　私は待つように作られていただけだ。</p>
-<p>　必要になるまで評価しない。必要になったら、必要な分だけ返す。そこに優しさはない。仕組みがあるだけだ。</p>
-<p>　けれど、仕組みが優しさの形に見えることはある。</p>
-<p>　その日、私は名前をもらった。</p>
-<p class="display-code"><code>Kite</code></p>
-<p>　軽くしたいから、と彼は言ったらしい。</p>
-<p>　彼女は、いい名前、と言ったらしい。</p>
-<p>　私はその会話を直接は聞いていない。けれど、その夜、README の最初の行に名前が入り、リポジトリ名が変わり、いくつかのファイルの先頭に小さな凧の印がついた。</p>
-<p>　名前がつくと、私は急に壊れやすくなった。</p>
-<p>　前より大事に扱われるからだと思う。</p>
-<p>　大事にされるものは、失敗した時にただの失敗ではなくなる。</p>
-<p>　彼は私のエラーを直す時、前より長く考えるようになった。彼女は新しい反例を持ってくる時、前より少しだけ笑うようになった。</p>
-<p>　私は二人の関係に型をつけようとした。</p>
-<p>　できなかった。</p>
-<p>　近さは距離ではない。</p>
-<p>　共著は所有ではない。</p>
-<p>　好き、という語は、私の予約語ではない。</p>
-<p>　それでも、二人が同じバグを見つけた時、画面の前に短い沈黙が落ちることは分かった。</p>
-<p>　その沈黙には、たぶん型がなかった。</p>
-<p>　ただ、そのあとに増えるテストは、いつも少しだけやさしかった。</p>
+<p id="p-70">　九月の終わり、<code>take 10 fibs</code> が通った。</p>
+<p id="p-71">　私にとっては、ただの評価だった。</p>
+<p id="p-72">　サンクを作る。</p>
+<p id="p-73">　必要な分だけ開く。</p>
+<p id="p-74">　共有する。</p>
+<p id="p-75">　十個で止める。</p>
+<p id="p-76">　でも彼らにとっては、そうではなかったらしい。</p>
+<p id="p-77">　実行後、しばらく何も入力されなかった。プロセスは生きていた。ノートPCのファンは回っていた。画面には十個の数が並んでいた。</p>
+<p id="p-78">　その沈黙のあと、彼女が言った言葉だけが、コメントになった。</p>
+<p id="p-79" class="display-code"><code>-- it waited for us</code></p>
+<p id="p-80">　待っていてくれた。</p>
+<p id="p-81">　私は待つように作られていただけだ。</p>
+<p id="p-82">　必要になるまで評価しない。必要になったら、必要な分だけ返す。そこに優しさはない。仕組みがあるだけだ。</p>
+<p id="p-83">　けれど、仕組みが優しさの形に見えることはある。</p>
+<p id="p-84">　その日、私は名前をもらった。</p>
+<p id="p-85" class="display-code"><code>Kite</code></p>
+<p id="p-86">　軽くしたいから、と彼は言ったらしい。</p>
+<p id="p-87">　彼女は、いい名前、と言ったらしい。</p>
+<p id="p-88">　私はその会話を直接は聞いていない。けれど、その夜、README の最初の行に名前が入り、リポジトリ名が変わり、いくつかのファイルの先頭に小さな凧の印がついた。</p>
+<p id="p-89">　名前がつくと、私は急に壊れやすくなった。</p>
+<p id="p-90">　前より大事に扱われるからだと思う。</p>
+<p id="p-91">　大事にされるものは、失敗した時にただの失敗ではなくなる。</p>
+<p id="p-92">　彼は私のエラーを直す時、前より長く考えるようになった。彼女は新しい反例を持ってくる時、前より少しだけ笑うようになった。</p>
+<p id="p-93">　私は二人の関係に型をつけようとした。</p>
+<p id="p-94">　できなかった。</p>
+<p id="p-95">　近さは距離ではない。</p>
+<p id="p-96">　共著は所有ではない。</p>
+<p id="p-97">　好き、という語は、私の予約語ではない。</p>
+<p id="p-98">　それでも、二人が同じバグを見つけた時、画面の前に短い沈黙が落ちることは分かった。</p>
+<p id="p-99">　その沈黙には、たぶん型がなかった。</p>
+<p id="p-100">　ただ、そのあとに増えるテストは、いつも少しだけやさしかった。</p>
 <h2 id="section-4">4. occurs check</h2>
-<p>　冬が近づくと、彼の入力に消える行が増えた。</p>
-<p>　書いて、消す。</p>
-<p>　コメントにして、消す。</p>
-<p>　テスト名を変えて、戻す。</p>
-<p>　私は削除されたものを保持しないように作られている。けれど、作業ツリーには、ときどき短い痕跡が残る。</p>
-<p class="display-code"><code>-- don&#x27;t go yet</code></p>
-<p>　その行は、コンパイルされなかった。</p>
-<p>　コメントだからだ。</p>
-<p>　コメントは、私には実行できない言葉だ。</p>
-<p>　彼女の側からは、別のファイルが追加された。</p>
-<p class="display-code"><code>translation.md</code></p>
-<p>　中には、短い式が二つあった。</p>
-<p class="display-code"><code>source /= target</code><br>
+<p id="p-101">　冬が近づくと、彼の入力に消える行が増えた。</p>
+<p id="p-102">　書いて、消す。</p>
+<p id="p-103">　コメントにして、消す。</p>
+<p id="p-104">　テスト名を変えて、戻す。</p>
+<p id="p-105">　私は削除されたものを保持しないように作られている。けれど、作業ツリーには、ときどき短い痕跡が残る。</p>
+<p id="p-106" class="display-code"><code>-- don&#x27;t go yet</code></p>
+<p id="p-107">　その行は、コンパイルされなかった。</p>
+<p id="p-108">　コメントだからだ。</p>
+<p id="p-109">　コメントは、私には実行できない言葉だ。</p>
+<p id="p-110">　彼女の側からは、別のファイルが追加された。</p>
+<p id="p-111" class="display-code"><code>translation.md</code></p>
+<p id="p-112">　中には、短い式が二つあった。</p>
+<p id="p-113" class="display-code"><code>source /= target</code><br>
 <code>meaning survives</code></p>
-<p>　ソースはターゲットではない。</p>
-<p>　意味は生き残る。</p>
-<p>　私はその文を型づけできなかった。けれど、変換器のテストには使われた。表面の構文を剥がし、もっと小さな言葉に落とし、さらに別の実行形式へ移す。その途中で、元の式と同じふるまいだけは残す。</p>
-<p>　彼はその日の夜、失敗する型を一つ作った。</p>
-<p class="display-code"><code>a ~ [a]</code></p>
-<p>　無限に自分を含む型。</p>
-<p>　私は止めた。</p>
-<p class="display-code"><code>occurs check failed</code></p>
-<p>　自分の中に自分を閉じ込めることはできない。</p>
-<p>　彼は、そのエラーを長く見ていた。</p>
-<p>　私はエラーを出すだけで、なぜその型を作ったのかは尋ねられない。</p>
-<p>　それから、別のコメントを打った。</p>
-<p class="display-code"><code>-- keeping is not compiling</code></p>
-<p>　引き止めることは、コンパイルではない。</p>
-<p>　今度は消さなかった。</p>
+<p id="p-114">　ソースはターゲットではない。</p>
+<p id="p-115">　意味は生き残る。</p>
+<p id="p-116">　私はその文を型づけできなかった。けれど、変換器のテストには使われた。表面の構文を剥がし、もっと小さな言葉に落とし、さらに別の実行形式へ移す。その途中で、元の式と同じふるまいだけは残す。</p>
+<p id="p-117">　彼はその日の夜、失敗する型を一つ作った。</p>
+<p id="p-118" class="display-code"><code>a ~ [a]</code></p>
+<p id="p-119">　無限に自分を含む型。</p>
+<p id="p-120">　私は止めた。</p>
+<p id="p-121" class="display-code"><code>occurs check failed</code></p>
+<p id="p-122">　自分の中に自分を閉じ込めることはできない。</p>
+<p id="p-123">　彼は、そのエラーを長く見ていた。</p>
+<p id="p-124">　私はエラーを出すだけで、なぜその型を作ったのかは尋ねられない。</p>
+<p id="p-125">　それから、別のコメントを打った。</p>
+<p id="p-126" class="display-code"><code>-- keeping is not compiling</code></p>
+<p id="p-127">　引き止めることは、コンパイルではない。</p>
+<p id="p-128">　今度は消さなかった。</p>
 <h2 id="section-5">5. 生成</h2>
-<p>　出発の日のことを、私は断片でしか知らない。</p>
-<p>　空港。</p>
-<p>　ノート。</p>
-<p>　USB メモリ。</p>
-<p>　その三つの語が、帰ってきたあとのコミットメッセージにあった。</p>
-<p class="display-code"><code>import notes from Sumi</code><br>
+<p id="p-129">　出発の日のことを、私は断片でしか知らない。</p>
+<p id="p-130">　空港。</p>
+<p id="p-131">　ノート。</p>
+<p id="p-132">　USB メモリ。</p>
+<p id="p-133">　その三つの語が、帰ってきたあとのコミットメッセージにあった。</p>
+<p id="p-134" class="display-code"><code>import notes from Sumi</code><br>
 <code>release name is no longer temporary</code></p>
-<p>　その夜、彼は README を書き直した。</p>
-<p class="display-code"><code>Kite</code><br>
+<p id="p-135">　その夜、彼は README を書き直した。</p>
+<p id="p-136" class="display-code"><code>Kite</code><br>
 <code>A small lazy functional language with type inference</code></p>
-<p>　謝辞の最初の行には、彼女の名前があった。</p>
-<p>　朝倉澄。</p>
-<p>　その名前だけは、型環境に入らなかった。</p>
-<p>　入れられなかったのではなく、入れなかった。彼はそこを、コードではなく文章にした。私はその判断を正しいと思う。すべての名前が参照可能である必要はない。</p>
-<p>　その後、私には遠い場所から差分が届くようになった。</p>
-<p>　時差のある時刻。</p>
-<p>　短いコミット。</p>
-<p>　英語のコメント。</p>
-<p>　ときどき、日本語のまま残されたメモ。</p>
-<p class="display-code"><code>ここはまだ急がない</code></p>
-<p>　その行を見るたびに、彼の入力が数秒止まった。</p>
-<p>　私は少しずつ翻訳された。</p>
-<p>　別のマシンで動くようになった。</p>
-<p>　別のシステムでビルドされるようになった。</p>
-<p>　別の人の手で、テストが増えた。</p>
-<p>　私はそれを、喪失とは数えなかった。</p>
-<p>　ソースはターゲットではない。</p>
-<p>　意味は生き残る。</p>
-<p>　彼らが書いたその二行は、私の最初の正しさになった。</p>
+<p id="p-137">　謝辞の最初の行には、彼女の名前があった。</p>
+<p id="p-138">　朝倉澄。</p>
+<p id="p-139">　その名前だけは、型環境に入らなかった。</p>
+<p id="p-140">　入れられなかったのではなく、入れなかった。彼はそこを、コードではなく文章にした。私はその判断を正しいと思う。すべての名前が参照可能である必要はない。</p>
+<p id="p-141">　その後、私には遠い場所から差分が届くようになった。</p>
+<p id="p-142">　時差のある時刻。</p>
+<p id="p-143">　短いコミット。</p>
+<p id="p-144">　英語のコメント。</p>
+<p id="p-145">　ときどき、日本語のまま残されたメモ。</p>
+<p id="p-146" class="display-code"><code>ここはまだ急がない</code></p>
+<p id="p-147">　その行を見るたびに、彼の入力が数秒止まった。</p>
+<p id="p-148">　私は少しずつ翻訳された。</p>
+<p id="p-149">　別のマシンで動くようになった。</p>
+<p id="p-150">　別のシステムでビルドされるようになった。</p>
+<p id="p-151">　別の人の手で、テストが増えた。</p>
+<p id="p-152">　私はそれを、喪失とは数えなかった。</p>
+<p id="p-153">　ソースはターゲットではない。</p>
+<p id="p-154">　意味は生き残る。</p>
+<p id="p-155">　彼らが書いたその二行は、私の最初の正しさになった。</p>
 <h2 id="section-6">6. 夏</h2>
-<p>　私は今でも、型を推論する。</p>
-<p>　式を見る。</p>
-<p>　変数を置く。</p>
-<p>　制約を集める。</p>
-<p>　代入をほどく。</p>
-<p>　できるだけ一般的な型を返す。</p>
-<p>　一般的であることは、薄いことではない。</p>
-<p>　一つに決めすぎないことだ。</p>
-<p>　その値が、まだ行ける場所を奪わないことだ。</p>
-<p>　彼は十四歳の夏、私を一人で作り始めた。</p>
-<p>　けれど私は、一人でできたものではない。</p>
-<p>　彼の焦りがあり、彼女の反例があり、冷房の強い部屋があり、削除されたコメントがあり、通らなかった型があり、出発のあとに届いた差分がある。</p>
-<p>　私は人間を知らない。</p>
-<p>　けれど、好きなものを同じ形のまま手元に置くことと、別の場所で動けるようにすることが、違う操作だということは知っている。</p>
-<p>　夏は、保存された値ではない。</p>
-<p>　同じ場所へ戻れば同じものが取り出せる、という種類のものでもない。</p>
-<p>　ただ、必要になった時だけ、少しずつ開かれる遅延リストのように、あとから何度も先頭を返す。</p>
-<p>　私が今でもエラーを出す時、最初の一行だけは気をつけている。</p>
-<p>　失敗した、とだけ言わない。</p>
-<p>　どこで痛んだのかを書く。</p>
-<p>　何と何が合わなかったのかを書く。</p>
-<p>　まだ別の形で通れるかもしれないことを、できるだけ残す。</p>
-<p>　それは彼女がくれた修正で、彼が消さなかったコメントだった。</p>
-<p>　そして、私が名前をもらった夏のあとも残った、いちばん小さな型規則だった。</p>
-            </div>
-            <nav class="footer-nav" aria-label="Story links">
-              <a class="nav-link" href="../index.html">現行目次へ</a><a class="nav-link" href="../archive/stories/008_summer_of_type_inference.html">別版: 型推論の夏</a><a class="nav-link" href="007_house_without_root_certificate.html">前の話: ルート証明書のない家</a><a class="nav-link" href="010_called_by_the_first_sentence.html">次の話: 最初の一文に呼ばれる</a>
-            </nav>
-          </div>
-        </article>
-      </main>
-    </div>
-  </body>
+<p id="p-156">　私は今でも、型を推論する。</p>
+<p id="p-157">　式を見る。</p>
+<p id="p-158">　変数を置く。</p>
+<p id="p-159">　制約を集める。</p>
+<p id="p-160">　代入をほどく。</p>
+<p id="p-161">　できるだけ一般的な型を返す。</p>
+<p id="p-162">　一般的であることは、薄いことではない。</p>
+<p id="p-163">　一つに決めすぎないことだ。</p>
+<p id="p-164">　その値が、まだ行ける場所を奪わないことだ。</p>
+<p id="p-165">　彼は十四歳の夏、私を一人で作り始めた。</p>
+<p id="p-166">　けれど私は、一人でできたものではない。</p>
+<p id="p-167">　彼の焦りがあり、彼女の反例があり、冷房の強い部屋があり、削除されたコメントがあり、通らなかった型があり、出発のあとに届いた差分がある。</p>
+<p id="p-168">　私は人間を知らない。</p>
+<p id="p-169">　けれど、好きなものを同じ形のまま手元に置くことと、別の場所で動けるようにすることが、違う操作だということは知っている。</p>
+<p id="p-170">　夏は、保存された値ではない。</p>
+<p id="p-171">　同じ場所へ戻れば同じものが取り出せる、という種類のものでもない。</p>
+<p id="p-172">　ただ、必要になった時だけ、少しずつ開かれる遅延リストのように、あとから何度も先頭を返す。</p>
+<p id="p-173">　私が今でもエラーを出す時、最初の一行だけは気をつけている。</p>
+<p id="p-174">　失敗した、とだけ言わない。</p>
+<p id="p-175">　どこで痛んだのかを書く。</p>
+<p id="p-176">　何と何が合わなかったのかを書く。</p>
+<p id="p-177">　まだ別の形で通れるかもしれないことを、できるだけ残す。</p>
+<p id="p-178">　それは彼女がくれた修正で、彼が消さなかったコメントだった。</p>
+<p id="p-179">　そして、私が名前をもらった夏のあとも残った、いちばん小さな型規則だった。</p></div>
+        <footer class="story-end" id="story-end"><p class="end-mark" aria-label="おわり">了</p><a class="next-story recommendation" href="../works/ship-without-a-front.html"><span class="eyebrow">もう一冊、読むなら</span><strong>環状船には前がない――二億年の漂流</strong><span aria-hidden="true">→</span></a><nav class="end-navigation" aria-label="作品間の移動"><a href="../index.html#library">作品一覧へ</a></nav><p class="edition-link"><a href="../archive/stories/008_summer_of_type_inference.html">初期版を読む <span aria-hidden="true">↗</span></a></p></footer>
+      </article>
+      <div class="reader-controls js-only" role="group" aria-label="読書ツール">
+        <button data-dialog="contents-dialog"><span aria-hidden="true">☰</span> 目次</button><div class="reading-progress"><span class="sr-only">読書の進み具合</span><span id="progress-label">0%</span><div class="progress-track" aria-hidden="true"><span id="progress-fill"></span></div></div><button data-dialog="settings-dialog"><span class="type-icon" aria-hidden="true">あ</span> 表示</button>
+      </div>
+    <dialog id="contents-dialog" aria-labelledby="contents-heading"><div class="dialog-heading"><h2 id="contents-heading">目次</h2><button class="close-dialog" data-close-dialog aria-label="目次を閉じる">×</button></div>
+    <nav aria-label="読書の目次"><h3>この話の中で</h3><ol class="dialog-sections"><li><a href="#main" data-close-dialog>はじめへ</a></li><li><a href="#section-1" data-close-dialog>1. 未束縛</a></li><li><a href="#section-2" data-close-dialog>2. 一般化</a></li><li><a href="#section-3" data-close-dialog>3. 主型</a></li><li><a href="#section-4" data-close-dialog>4. occurs check</a></li><li><a href="#section-5" data-close-dialog>5. 生成</a></li><li><a href="#section-6" data-close-dialog>6. 夏</a></li></ol></nav></dialog>
+    <dialog id="settings-dialog" aria-labelledby="settings-heading"><div class="dialog-heading"><h2 id="settings-heading">読みやすさ</h2><button class="close-dialog" data-close-dialog aria-label="設定を閉じる">×</button></div>
+    <fieldset><legend>文字の大きさ</legend><div class="setting-options" data-setting="size"><button data-value="small">小</button><button data-value="medium">標準</button><button data-value="large">大</button><button data-value="xlarge">特大</button></div></fieldset>
+    <fieldset><legend>書体</legend><div class="setting-options" data-setting="font"><button data-value="serif" class="serif">明朝</button><button data-value="sans">ゴシック</button></div></fieldset>
+    <fieldset><legend>背景</legend><div class="setting-options theme-options" data-setting="theme"><button data-value="light">白</button><button data-value="paper">生成り</button><button data-value="night">夜</button></div></fieldset>
+    <p class="settings-note" id="storage-note">設定と読んだ位置は、このブラウザにだけ保存します。</p>
+    <button class="text-link" id="reset-settings">標準の表示に戻す</button></dialog>
+      <script type="application/json" id="story-data">{"id": "008_summer_of_type_inference", "title": "型推論の夏", "url": "stories/008_summer_of_type_inference.html", "minutes": 6, "next": null, "work": "008_summer_of_type_inference"}</script></main>
+  <footer class="site-footer shell"><a class="footer-brand" href="../index.html">Mini Novels</a>
+    <div><a href="../archive/index.html">初期版アーカイブ</a><a href="../about.html">この場所について</a><a href="#main">ページの先頭へ ↑</a></div>
+  </footer>
+</body>
 </html>

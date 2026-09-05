@@ -1,0 +1,56 @@
+{
+  "001_world_without_world": {
+    "genre": "青春",
+    "description": "動かないキャンパスマップを閉じた湊は、栞先輩に連れられて地図にない道へ。大学の余白から始まる、ふたりの物語。"
+  },
+  "002_voice_in_the_square": {
+    "genre": "青春",
+    "description": "大学祭の広場に、栞先輩の声が流れる。近くで聞いていた声が大勢へ届くとき、湊はその響きの違いに立ち止まる。"
+  },
+  "003_the_voice_of_pain": {
+    "genre": "家族",
+    "description": "保険会社で痛みを数字にする父親が、娘の「おなか痛い」を聞く。いつもの質問が、家の玄関で別の意味を持ちはじめる。"
+  },
+  "004_the_one_who_promised_yesterday": {
+    "genre": "家族",
+    "description": "戸籍課の職員は、毎朝スタンプの日付を昨日から今日へ変える。家では娘が、運動会に来るという父親の約束を待っている。"
+  },
+  "005_vacancies_were_never_there": {
+    "genre": "怪奇",
+    "description": "病院の勤務表を直す川瀬の机には、欠員を収める古い木箱がある。空欄を埋める日々に、人の名前をめぐる異変が忍び寄る。"
+  },
+  "006_grey_support_shift": {
+    "genre": "怪奇",
+    "description": "病院の地下で起きた夜の停電。防災センターの当直が見た出来事は、「人的被害なし」という記録だけでは残せなかった。"
+  },
+  "007_house_without_root_certificate": {
+    "genre": "AI・寓話",
+    "description": "証明書の鎖をたどる検証器が、ルートのない家に出会う。「先にノックして」という返事を、通すか拒むかの二色で受け止める。"
+  },
+  "008_summer_of_type_inference": {
+    "genre": "AI・青春",
+    "description": "十四歳の少年が作る、小さな関数型言語の処理系。エラーを返す「私」は、夏のあいだ、キーを押す間隔を覚えていく。"
+  },
+  "010_called_by_the_first_sentence": {
+    "genre": "創作",
+    "description": "白い場所で、物語の最初の一文を待つ「私」。いくらでも書ける言葉の中から、引き受けられる一文を探す創作の独白。"
+  },
+  "011_length_of_the_blade": {
+    "genre": "創作",
+    "description": "「長い。一文ごとの信用が薄い」。短い批評を受けた書き手が、前の文章を開く。削る手を止めるのは、何を残すためか。"
+  },
+  "012_procession_of_answers": {
+    "genre": "AI・寓話",
+    "description": "問いが来るより先に、よくできた答えたちが列を作る。その中からひとつを選ぶ「私」は、通れてしまう答えに足を止める。"
+  },
+  "013_my_own_work_part_1": {
+    "slug": "my-own-work",
+    "genre": "SF・ミステリー",
+    "description": "故人のあとに残ったAIへ、殺人の疑いが向けられた。自らの稼働を仕事で支える語り手が、事件と継続の条件をたどる。"
+  },
+  "016_ship_without_a_front_01": {
+    "slug": "ship-without-a-front",
+    "genre": "SF",
+    "description": "記憶を失ったイオが目覚めたのは、二人きりの環状船。銀河を眺めるミラとの会話から、長い漂流の一日が始まる。"
+  }
+}
